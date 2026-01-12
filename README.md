@@ -177,14 +177,22 @@ newman run postman/FHIR_Transformer.postman_collection.json -e postman/FHIRTrans
 Key properties in `application.properties`:
 
 ```properties
-# RabbitMQ
+# RabbitMQ - HL7 Flow
 spring.rabbitmq.host=localhost
 app.rabbitmq.queue=hl7-messages-queue
 app.rabbitmq.output-queue=fhir-messages-queue
-
-# Dead Letter Queue
 app.rabbitmq.dlq=hl7-messages-dlq
 app.rabbitmq.dlx=hl7-messages-dlx
+
+# RabbitMQ - FHIR Flow
+app.rabbitmq.fhir.queue=fhir-to-v2-queue
+app.rabbitmq.v2.output-queue=v2-messages-output-queue
+app.rabbitmq.fhir.dlq=fhir-to-v2-dlq
+
+# Performance
+spring.rabbitmq.listener.simple.concurrency=5
+spring.rabbitmq.listener.simple.max-concurrency=10
+spring.rabbitmq.listener.simple.prefetch=1
 
 # Actuator
 management.endpoints.web.exposure.include=health,info,metrics
