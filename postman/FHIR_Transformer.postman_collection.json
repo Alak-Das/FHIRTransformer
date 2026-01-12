@@ -23,6 +23,10 @@
                                     "    var jsonData = pm.response.json();",
                                     "    pm.expect(jsonData.status).to.eql(\"Accepted\");",
                                     "    pm.expect(jsonData.message).to.eql(\"Processing asynchronously\");",
+                                    "});",
+                                    "pm.test(\"Transaction ID matches MSH-10\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.transactionId).to.eql(\"MSGID123\");",
                                     "});"
                                 ],
                                 "type": "text/javascript"

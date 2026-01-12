@@ -98,6 +98,15 @@ java -jar target/fhir-transformer-0.0.1-SNAPSHOT.jar
 **Endpoint**: `POST /api/convert/v2-to-fhir`
 **Body**: Raw HL7 v2 Message (Pipe-delimited)
 **Response**: `202 Accepted`
+**Content-Type**: `application/json`
+**Example Response**:
+```json
+{
+  "status": "Accepted",
+  "message": "Processing asynchronously",
+  "transactionId": "MSGID123"
+}
+```
 
 ### 2. HL7 to FHIR (Sync / Debug)
 **Endpoint**: `POST /api/convert/v2-to-fhir-sync`
@@ -108,7 +117,15 @@ java -jar target/fhir-transformer-0.0.1-SNAPSHOT.jar
 **Endpoint**: `POST /api/convert/fhir-to-v2`
 **Body**: FHIR R4 Bundle JSON
 **Response**: `202 Accepted`
-**Behavior**: Queues message, converts in background, output to `v2-messages-output-queue`.
+**Content-Type**: `application/json`
+**Example Response**:
+```json
+{
+  "status": "Accepted",
+  "message": "Processing asynchronously",
+  "transactionId": "fe83472d-905e-4c03-a0e4-234234234"
+}
+```
 
 ### 4. FHIR to HL7 v2 (Sync / Debug)
 **Endpoint**: `POST /api/convert/fhir-to-v2-sync`
