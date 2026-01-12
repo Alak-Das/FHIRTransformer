@@ -138,6 +138,19 @@ java -jar target/fhir-transformer-0.0.1-SNAPSHOT.jar
 
 ---
 
+### 6. Performance Tuning
+The application is configured for **high throughput** using parallel RabbitMQ consumers:
+- **Concurrency**: 5 consumers per queue (scale to 10 max).
+- **Prefetch**: 1 message per consumer (ensures fair load distribution for heavy parsing).
+- **Configuration**: `application.properties` parameters `spring.rabbitmq.listener.simple.concurrency`.
+
+## 🛡️ Security
+Currently, the service runs in an internal trusted network mode.
+*   **Future Work**: Add OAuth2/OIDC for API security.
+*   **RabbitMQ**: Use specialized credentials in production (currently `guest`/`guest`).
+
+---
+
 ## 🧪 Testing
 
 The project includes a comprehensive **Postman Collection** covering all scenarios.
