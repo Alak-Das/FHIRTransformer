@@ -1,0 +1,19 @@
+services:
+  fhir-transformer:
+    build: .
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    container_name: fhir-transformer
+    depends_on:
+      - rabbitmq
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    container_name: fhir-mq
+    restart: unless-stopped
