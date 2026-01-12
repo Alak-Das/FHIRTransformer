@@ -404,6 +404,94 @@
                             ]
                         }
                     }
+                },
+                {
+                    "name": "Sync Malformed FHIR",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 400\", function () {",
+                                    "    pm.response.to.have.status(400);",
+                                    "});",
+                                    "pm.test(\"Contains Error Message\", function () {",
+                                    "    pm.expect(pm.response.text()).to.match(/Error|error/);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{ \"resourceType\": \"Bundle\", \"broken_json\": "
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/fhir-to-v2-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "fhir-to-v2-sync"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Sync Non-Bundle FHIR",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 400\", function () {",
+                                    "    pm.response.to.have.status(400);",
+                                    "});",
+                                    "pm.test(\"Contains Error\", function () {",
+                                    "    pm.expect(pm.response.text()).to.include(\"Error\");",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"resourceType\": \"Patient\",\n  \"id\": \"123\",\n  \"name\": [ { \"family\": \"TEST\" } ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/fhir-to-v2-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "fhir-to-v2-sync"
+                            ]
+                        }
+                    }
                 }
             ]
         },

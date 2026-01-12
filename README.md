@@ -166,6 +166,7 @@ newman run postman/FHIR_Transformer.postman_collection.json -e postman/FHIRTrans
 *   Async & Sync ADT^A01
 *   Sync ADT^A08 (Patient Update)
 *   FHIR to HL7 (With and Without Encounter)
+*   **Negative Tests**: Malformed FHIR, Invalid Resource Types, Minimal HL7.
 *   Error Handling
 *   Health & Metrics Checks
 
