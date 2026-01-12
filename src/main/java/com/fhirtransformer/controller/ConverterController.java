@@ -3,6 +3,7 @@ package com.fhirtransformer.controller;
 import com.fhirtransformer.service.Hl7ToFhirService;
 import com.fhirtransformer.service.FhirToHl7Service;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -23,6 +24,13 @@ public class ConverterController {
     @Value("${app.rabbitmq.routingkey}")
     private String routingKey;
 
+    @Value("${app.rabbitmq.fhir.exchange}")
+    private String fhirExchange;
+
+    @Value("${app.rabbitmq.fhir.routingkey}")
+    private String fhirRoutingKey;
+
+    @Autowired
     public ConverterController(Hl7ToFhirService hl7ToFhirService, FhirToHl7Service fhirToHl7Service,
             RabbitTemplate rabbitTemplate) {
         this.hl7ToFhirService = hl7ToFhirService;
@@ -50,6 +58,13 @@ public class ConverterController {
 
     @PostMapping(value = "/fhir-to-v2", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.TEXT_PLAIN_VALUE)
     public ResponseEntity<String> convertToHl7(@RequestBody String fhirJson) {
+        // Publish to RabbitMQ for Async Processing
+        rabbitTemplate.convertAndSend(fhirExchange, fhirRoutingKey, fhirJson);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body("Status: Accepted, Message: Processing asynchronously");
+    }
+
+    @PostMapping(value = "/fhir-to-v2-sync", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.TEXT_PLAIN_VALUE)
+    public ResponseEntity<String> convertToHl7Sync(@RequestBody String fhirJson) {
         try {
             String hl7Message = fhirToHl7Service.convertFhirToHl7(fhirJson);
             return ResponseEntity.ok(hl7Message);

@@ -257,6 +257,51 @@
             "name": "FHIR to HL7 Conversions",
             "item": [
                 {
+                    "name": "Async Bundle to HL7",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 202\", function () {",
+                                    "    pm.response.to.have.status(202);",
+                                    "});",
+                                    "pm.test(\"Response body indicates async processing\", function () {",
+                                    "    var textData = pm.response.text();",
+                                    "    pm.expect(textData).to.include(\"Processing asynchronously\");",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"identifier\": [ { \"value\": \"ASYNC-123\" } ],\n        \"name\": [ { \"family\": \"SKYWALKER\", \"given\": [\"LUKE\"] } ],\n        \"gender\": \"male\"\n      }\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/fhir-to-v2",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "fhir-to-v2"
+                            ]
+                        }
+                    }
+                },
+                {
                     "name": "Bundle (Patient + Encounter)",
                     "event": [
                         {
@@ -297,20 +342,20 @@
                             "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"identifier\": [ { \"value\": \"12345\" } ],\n        \"name\": [ { \"family\": \"SMITH\", \"given\": [\"JOHN\"] } ],\n        \"gender\": \"male\"\n      }\n    },\n    {\n      \"resource\": {\n        \"resourceType\": \"Encounter\",\n        \"identifier\": [ { \"value\": \"VISIT-001\" } ],\n        \"class\": { \"code\": \"I\" }\n      }\n    }\n  ]\n}"
                         },
                         "url": {
-                            "raw": "{{baseUrl}}/api/convert/fhir-to-v2",
+                            "raw": "{{baseUrl}}/api/convert/fhir-to-v2-sync",
                             "host": [
                                 "{{baseUrl}}"
                             ],
                             "path": [
                                 "api",
                                 "convert",
-                                "fhir-to-v2"
+                                "fhir-to-v2-sync"
                             ]
                         }
                     }
                 },
                 {
-                    "name": "Bundle (Patient Only)",
+                    "name": "Sync Bundle (Patient Only)",
                     "event": [
                         {
                             "listen": "test",
@@ -344,14 +389,14 @@
                             "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"identifier\": [ { \"value\": \"99999\" } ],\n        \"name\": [ { \"family\": \"SOLO\", \"given\": [\"HAN\"] } ],\n        \"gender\": \"male\"\n      }\n    }\n  ]\n}"
                         },
                         "url": {
-                            "raw": "{{baseUrl}}/api/convert/fhir-to-v2",
+                            "raw": "{{baseUrl}}/api/convert/fhir-to-v2-sync",
                             "host": [
                                 "{{baseUrl}}"
                             ],
                             "path": [
                                 "api",
                                 "convert",
-                                "fhir-to-v2"
+                                "fhir-to-v2-sync"
                             ]
                         }
                     }

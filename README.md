@@ -63,9 +63,11 @@ sequenceDiagram
 ### Queue Topology
 | Queue Name | Type | Purpose |
 | :--- | :--- | :--- |
-| `hl7-messages-queue` | Input | Receives raw HL7 messages for processing. |
-| `hl7-messages-dlq` | DLQ | Stores failed messages for manual inspection/retry. |
-| `fhir-messages-queue` | Output | Stores successfully converted FHIR Bundles. |
+| `hl7-messages-queue` | Input (HL7) | Receives raw HL7 messages for processing (To FHIR). |
+| `hl7-messages-dlq` | DLQ | Stores failed HL7 messages. |
+| `fhir-messages-queue` | Output (FHIR) | Stores successfully converted FHIR Bundles. |
+| `fhir-to-v2-queue` | Input (FHIR) | **[NEW]** Receives FHIR Bundles for conversion to HL7. |
+| `v2-messages-output-queue` | Output (HL7) | **[NEW]** Stores successfully converted HL7 messages. |
 
 ---
 
@@ -92,27 +94,28 @@ java -jar target/fhir-transformer-0.0.1-SNAPSHOT.jar
 
 ## 🔌 API Reference
 
-### 1. Async HL7 to FHIR
+### 1. HL7 to FHIR (Async)
 **Endpoint**: `POST /api/convert/v2-to-fhir`
 **Body**: Raw HL7 v2 Message (Pipe-delimited)
 **Response**: `202 Accepted`
 
-**Example**:
-```text
-MSH|^~\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01||PID|1||100||DOE^JOHN||19700101|M||||||||||1000
-```
-
-### 2. Sync HL7 to FHIR (Debug)
+### 2. HL7 to FHIR (Sync / Debug)
 **Endpoint**: `POST /api/convert/v2-to-fhir-sync`
 **Body**: Raw HL7 Message
 **Response**: `200 OK` (FHIR Bundle JSON)
 
-### 3. FHIR to HL7 v2
+### 3. FHIR to HL7 v2 (Async)
 **Endpoint**: `POST /api/convert/fhir-to-v2`
+**Body**: FHIR R4 Bundle JSON
+**Response**: `202 Accepted`
+**Behavior**: Queues message, converts in background, output to `v2-messages-output-queue`.
+
+### 4. FHIR to HL7 v2 (Sync / Debug)
+**Endpoint**: `POST /api/convert/fhir-to-v2-sync`
 **Body**: FHIR R4 Bundle JSON
 **Response**: `200 OK` (HL7 Message string)
 
-### 4. Observability
+### 5. Observability
 *   **Health**: `GET /actuator/health`
 *   **Metrics**: `GET /actuator/metrics`
 

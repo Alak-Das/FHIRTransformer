@@ -42,6 +42,8 @@ public class RabbitMQConfig {
                 .build();
     }
 
+    // --- HL7 to FHIR Flow ---
+
     @Bean
     Queue outputQueue() {
         return QueueBuilder.durable(outputQueueName).build();
@@ -75,6 +77,73 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(queue)
                 .to(exchange)
                 .with(routingKey)
+                .noargs();
+    }
+
+    // --- FHIR to HL7 Flow ---
+
+    @Value("${app.rabbitmq.fhir.queue}")
+    private String fhirQueueName;
+
+    @Value("${app.rabbitmq.v2.output-queue}")
+    private String v2OutputQueueName;
+
+    @Value("${app.rabbitmq.fhir.exchange}")
+    private String fhirExchangeName;
+
+    @Value("${app.rabbitmq.fhir.routingkey}")
+    private String fhirRoutingKey;
+
+    @Value("${app.rabbitmq.fhir.dlq}")
+    private String fhirDlqName;
+
+    @Value("${app.rabbitmq.fhir.dlx}")
+    private String fhirDlxName;
+
+    @Value("${app.rabbitmq.fhir.dl-routingkey}")
+    private String fhirDlRoutingKey;
+
+    @Bean
+    Queue fhirQueue() {
+        return QueueBuilder.durable(fhirQueueName)
+                .withArgument("x-dead-letter-exchange", fhirDlxName)
+                .withArgument("x-dead-letter-routing-key", fhirDlRoutingKey)
+                .build();
+    }
+
+    @Bean
+    Queue v2OutputQueue() {
+        return QueueBuilder.durable(v2OutputQueueName).build();
+    }
+
+    @Bean
+    Exchange fhirExchange() {
+        return ExchangeBuilder.topicExchange(fhirExchangeName).durable(true).build();
+    }
+
+    @Bean
+    Binding fhirBinding() {
+        return BindingBuilder.bind(fhirQueue())
+                .to(fhirExchange())
+                .with(fhirRoutingKey)
+                .noargs();
+    }
+
+    @Bean
+    Queue fhirDlq() {
+        return QueueBuilder.durable(fhirDlqName).build();
+    }
+
+    @Bean
+    Exchange fhirDlx() {
+        return ExchangeBuilder.directExchange(fhirDlxName).durable(true).build();
+    }
+
+    @Bean
+    Binding fhirDlqBinding() {
+        return BindingBuilder.bind(fhirDlq())
+                .to(fhirDlx())
+                .with(fhirDlRoutingKey)
                 .noargs();
     }
 }
