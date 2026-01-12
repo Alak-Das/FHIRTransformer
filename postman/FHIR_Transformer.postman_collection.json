@@ -1,0 +1,218 @@
+{
+    "info": {
+        "_postman_id": "fhir-transformer-integration",
+        "name": "FHIR Transformer Integration Tests",
+        "description": "Integration tests for FHIR Transformer API",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Async HL7 to FHIR (RabbitMQ)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 202\", function () {",
+                            "    pm.response.to.have.status(202);",
+                            "});",
+                            "",
+                            "pm.test(\"Response body indicates async processing\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.status).to.eql(\"Accepted\");",
+                            "    pm.expect(jsonData.message).to.eql(\"Processing asynchronously\");",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "text/plain",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01|MSGID123|P|2.5\rPID|1||100||DOE^JOHN||19700101|M||||||||||1000"
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/api/convert/v2-to-fhir",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "convert",
+                        "v2-to-fhir"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Sync HL7 to FHIR (Legacy)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "var jsonData = pm.response.json();",
+                            "",
+                            "pm.test(\"Is FHIR Bundle\", function () {",
+                            "    pm.expect(jsonData.resourceType).to.eql(\"Bundle\");",
+                            "});",
+                            "",
+                            "pm.test(\"Contains Patient Resource\", function () {",
+                            "    var patient = jsonData.entry.find(e => e.resource.resourceType === \"Patient\");",
+                            "    pm.expect(patient).to.not.be.undefined;",
+                            "    pm.expect(patient.resource.name[0].family).to.eql(\"DOE\");",
+                            "    pm.expect(patient.resource.gender).to.eql(\"male\");",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "text/plain",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01|MSGID123|P|2.5\rPID|1||100||DOE^JOHN||19700101|M||||||||||1000"
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "convert",
+                        "v2-to-fhir-sync"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "FHIR to HL7 v2",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () {",
+                            "    pm.response.to.have.status(200);",
+                            "});",
+                            "",
+                            "var textData = pm.response.text();",
+                            "",
+                            "pm.test(\"Contains correct segments\", function () {",
+                            "    pm.expect(textData).to.include(\"MSH|\");",
+                            "    pm.expect(textData).to.include(\"PID|\");",
+                            "    pm.expect(textData).to.include(\"PV1|\");",
+                            "});",
+                            "",
+                            "pm.test(\"Contains Patient Data\", function () {",
+                            "    pm.expect(textData).to.include(\"SMITH\");",
+                            "    pm.expect(textData).to.include(\"12345\");",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"identifier\": [ { \"value\": \"12345\" } ],\n        \"name\": [ { \"family\": \"SMITH\", \"given\": [\"JOHN\"] } ],\n        \"gender\": \"male\"\n      }\n    },\n    {\n      \"resource\": {\n        \"resourceType\": \"Encounter\",\n        \"identifier\": [ { \"value\": \"VISIT-001\" } ],\n        \"class\": { \"code\": \"I\" }\n      }\n    }\n  ]\n}"
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/api/convert/fhir-to-v2",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "convert",
+                        "fhir-to-v2"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Error Handling (Bad HL7)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 400\", function () {",
+                            "    pm.response.to.have.status(400);",
+                            "});",
+                            "",
+                            "pm.test(\"Response contains error\", function () {",
+                            "    var jsonData = pm.response.json();",
+                            "    pm.expect(jsonData.error).to.not.be.undefined;",
+                            "});"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "text/plain",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "INVALID HEADER|..."
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "convert",
+                        "v2-to-fhir-sync"
+                    ]
+                }
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8080",
+            "type": "string"
+        }
+    ]
+}
