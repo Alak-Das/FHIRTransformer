@@ -1,5 +1,11 @@
 # FHIR Transformer
 
+![Java](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.1-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)
+![RabbitMQ](https://img.shields.io/badge/RabbitMQ-3.12-FF6600?style=for-the-badge&logo=rabbitmq&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-24.0-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Postman](https://img.shields.io/badge/Postman-v10-FF6C37?style=for-the-badge&logo=postman&logoColor=white)
+
 A high-performance, event-driven integration service bridging **Legacy HL7 v2** systems and Modern **FHIR R4** healthcare standards. Built for high reliability and scalability using Spring Boot 4.0 and RabbitMQ.
 
 ## 🚀 Key Features
