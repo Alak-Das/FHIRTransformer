@@ -1,94 +1,154 @@
-# HL7 v2 ↔ FHIR Migration Tool
+# FHIR Transformer
 
-A high-performance, bi-directional converter bridging HL7 v2 legacy messaging and HL7 FHIR R4 standard. Built with Java 21, Spring Boot, and HAPI FHIR/HL7 libraries.
+A high-performance, event-driven integration service bridging **Legacy HL7 v2** systems and Modern **FHIR R4** healthcare standards. Built for high reliability and scalability using Spring Boot 4.0 and RabbitMQ.
 
-## Features
-- **HL7 v2 to FHIR R4**: Converts ADT messages (and others) to FHIR Bundles.
-- **FHIR R4 to HL7 v2**: Converts FHIR Bundles to HL7 v2.5 ADT^A01 messages.
-- **Async Processing**: Uses RabbitMQ for high-throughput, event-driven processing.
-- **Dockerized**: specific `Dockerfile` and `docker-compose.yml` for easy deployment.
+## 🚀 Key Features
 
-## Architecture
-The application uses an event-driven architecture for the `v2-to-fhir` flow:
-1.  **Ingestion**: `POST /api/convert/v2-to-fhir` receives a message and immediately returns `202 Accepted`.
-2.  **Queue**: The message is published to `hl7-messages-queue`.
-3.  **Validation & Conversion**: A background listener (`Hl7MessageListener`) processes the message.
-4.  **Output**: The resulting FHIR Bundle is published to `fhir-messages-queue`.
+*   **Bi-Directional Conversion**:
+    *   **HL7 v2 -> FHIR R4**: Converts ADT (A01, A08, etc.) messages to FHIR Bundles.
+    *   **FHIR R4 -> HL7 v2**: Converts FHIR Bundles (Patient, Encounter) back to HL7 v2.5 ADT messages.
+*   **Event-Driven Architecture**: Fully asynchronous processing pipeline using RabbitMQ.
+*   **Reliability**: Built-in **Dead Letter Queue (DLQ)** handling for failed messages.
+*   **Observability**: Integrated **Spring Boot Actuator** for health checks and metrics.
+*   **Containerized**: Production-ready Docker images and Compose setup.
 
-## Prerequisites
-- Java 21+
-- Maven 3.8+
-- Docker & Docker Compose (optional but recommended)
+---
 
-## Quick Start (Docker)
-The easiest way to run the application and RabbitMQ:
+## 🛠️ Technical Stack
+
+*   **Language**: Java 21 (Eclipse Temurin)
+*   **Framework**: Spring Boot 4.0.1
+*   **Libraries**: 
+    *   HAPI FHIR 7.6.1 (Latest Stable)
+    *   HAPI HL7 v2 2.5.1
+*   **Messaging**: RabbitMQ (AMQP)
+*   **Build**: Maven 3.9+
+*   **Container**: Docker & Docker Compose
+
+---
+
+## 🏗️ Architecture
+
+The system uses an asynchronous "fire-and-forget" pattern for high throughput.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as Controller
+    participant MQ as RabbitMQ (Input)
+    participant Worker as Listener Service
+    participant DLQ as Dead Letter Queue
+    participant OutMQ as RabbitMQ (Output)
+
+    Client->>API: POST /v2-to-fhir (HL7 Message)
+    API->>MQ: Publish Message
+    API-->>Client: 202 Accepted
+    
+    MQ->>Worker: Consume Message
+    alt Conversion Success
+        Worker->>Worker: HL7 -> FHIR Conversion
+        Worker->>OutMQ: Publish FHIR Bundle
+    else Conversion Failure
+        Worker-->>MQ: Reject (Exception)
+        MQ->>DLQ: Route to DLQ
+    end
+```
+
+### Queue Topology
+| Queue Name | Type | Purpose |
+| :--- | :--- | :--- |
+| `hl7-messages-queue` | Input | Receives raw HL7 messages for processing. |
+| `hl7-messages-dlq` | DLQ | Stores failed messages for manual inspection/retry. |
+| `fhir-messages-queue` | Output | Stores successfully converted FHIR Bundles. |
+
+---
+
+## 🏃 Quick Start
+
+### Option 1: Docker (Recommended)
+This spins up the Transformer and a RabbitMQ instance.
 
 ```bash
-docker-compose up -d
+docker-compose up -d --build
 ```
-The API is available at `http://localhost:8080`. RabbitMQ Management UI is at `http://localhost:15672`.
+*   **API**: `http://localhost:8080`
+*   **RabbitMQ Console**: `http://localhost:15672` (User: `guest` / Pass: `guest`)
 
-## Manual Build & Run
-If you don't use Docker, you must have a local RabbitMQ instance running on default ports.
+### Option 2: Local Java
+Requires a local RabbitMQ instance running on port 5672.
 
 ```bash
 mvn clean package
 java -jar target/fhir-transformer-0.0.1-SNAPSHOT.jar
 ```
 
-## API Usage
+---
 
-### 1. Async HL7 v2 to FHIR (Recommended)
+## 🔌 API Reference
+
+### 1. Async HL7 to FHIR
 **Endpoint**: `POST /api/convert/v2-to-fhir`
-**Content-Type**: `text/plain`
-**Body**: Pipe-delimited HL7 message.
+**Body**: Raw HL7 v2 Message (Pipe-delimited)
 **Response**: `202 Accepted`
 
-**Example Request**:
-```
+**Example**:
+```text
 MSH|^~\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01||PID|1||100||DOE^JOHN||19700101|M||||||||||1000
 ```
-*Note: Connect to RabbitMQ `fhir-messages-queue` to receive the result.*
 
-### 2. Synchronous HL7 v2 to FHIR (Legacy/Debug)
+### 2. Sync HL7 to FHIR (Debug)
 **Endpoint**: `POST /api/convert/v2-to-fhir-sync`
-**Content-Type**: `text/plain`
-**Response**: `200 OK` with JSON Result (blocks thread).
+**Body**: Raw HL7 Message
+**Response**: `200 OK` (FHIR Bundle JSON)
 
 ### 3. FHIR to HL7 v2
 **Endpoint**: `POST /api/convert/fhir-to-v2`
-**Content-Type**: `application/json`
-**Body**: FHIR Bundle JSON.
+**Body**: FHIR R4 Bundle JSON
+**Response**: `200 OK` (HL7 Message string)
 
-**Example Request**:
-```json
-{
-  "resourceType": "Bundle",
-  "type": "transaction",
-  "entry": [
-    {
-      "resource": {
-        "resourceType": "Patient",
-        "identifier": [ { "value": "12345" } ],
-        "name": [ { "family": "SMITH", "given": ["JOHN"] } ],
-        "gender": "male"
-      }
-    }
-  ]
-}
+### 4. Observability
+*   **Health**: `GET /actuator/health`
+*   **Metrics**: `GET /actuator/metrics`
+
+---
+
+## 🧪 Testing
+
+The project includes a comprehensive **Postman Collection** covering all scenarios.
+
+### Running Tests (Newman)
+You can run the full integration suite locally using Newman (Docker stack must be running):
+
+```bash
+newman run postman/FHIR_Transformer.postman_collection.json -e postman/FHIRTransformer.local.postman_environment.json
 ```
 
-## Configuration
-Key `application.properties`:
-```properties
-# RabbitMQ Connection
-spring.rabbitmq.host=localhost
-spring.rabbitmq.port=5672
+**Scenarios Covered**:
+*   Async & Sync ADT^A01
+*   Sync ADT^A08 (Patient Update)
+*   FHIR to HL7 (With and Without Encounter)
+*   Error Handling
+*   Health & Metrics Checks
 
-# Queue Config
+---
+
+## ⚙️ Configuration
+
+Key properties in `application.properties`:
+
+```properties
+# RabbitMQ
+spring.rabbitmq.host=localhost
 app.rabbitmq.queue=hl7-messages-queue
 app.rabbitmq.output-queue=fhir-messages-queue
+
+# Dead Letter Queue
+app.rabbitmq.dlq=hl7-messages-dlq
+app.rabbitmq.dlx=hl7-messages-dlx
+
+# Actuator
+management.endpoints.web.exposure.include=health,info,metrics
 ```
 
-## License
+## 📜 License
 MIT
