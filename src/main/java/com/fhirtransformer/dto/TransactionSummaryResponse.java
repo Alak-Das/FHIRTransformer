@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 @Builder
@@ -13,5 +14,6 @@ import java.util.List;
 @AllArgsConstructor
 public class TransactionSummaryResponse {
     private long totalCount;
+    private Map<String, Long> statusCounts;
     private List<TransactionDTO> transactions;
 }

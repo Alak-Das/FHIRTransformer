@@ -5,6 +5,7 @@ import com.fhirtransformer.dto.TransactionDTO;
 import com.fhirtransformer.dto.TenantOnboardRequest;
 import com.fhirtransformer.dto.TenantUpdateRequest;
 import java.util.stream.Collectors;
+import java.util.Map;
 import com.fhirtransformer.model.Tenant;
 import com.fhirtransformer.model.TransactionRecord;
 import com.fhirtransformer.repository.TransactionRepository;
@@ -45,6 +46,9 @@ public class TenantController {
         List<TransactionRecord> records = transactionRepository.findByTenantIdAndTimestampBetween(tenantId, startDate,
                 endDate);
 
+        Map<String, Long> statusCounts = records.stream()
+                .collect(Collectors.groupingBy(TransactionRecord::getStatus, Collectors.counting()));
+
         List<TransactionDTO> dtos = records.stream()
                 .map(r -> TransactionDTO.builder()
                         .id(r.getId()) // Internal ID
@@ -57,6 +61,7 @@ public class TenantController {
 
         return ResponseEntity.ok(TransactionSummaryResponse.builder()
                 .totalCount(records.size())
+                .statusCounts(statusCounts)
                 .transactions(dtos)
                 .build());
     }
