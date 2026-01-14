@@ -118,27 +118,19 @@ java -jar target/fhir-transformer-0.0.1-SNAPSHOT.jar
 
 ## 🔌 API Reference
 
-### 1. Tenant Management (Admin Only)
+### Comprehensive Endpoint Details
 
-*   **Onboard Tenant**
-    *   `POST /api/tenants/onboard`
-    *   Body: `{ "tenantId": "tenant1", "password": "...", "name": "Hospital A" }`
-*   **Update Tenant**
-    *   `PUT /api/tenants/{tenantId}`
-*   **Delete Tenant**
-    *   `DELETE /api/tenants/{tenantId}`
-
-### 2. HL7 to FHIR
-*   **Async**: `POST /api/convert/v2-to-fhir` (Returns `202 Accepted`)
-*   **Sync**: `POST /api/convert/v2-to-fhir-sync` (Returns `200 OK` with Bundle)
-
-### 3. FHIR to HL7
-*   **Async**: `POST /api/convert/fhir-to-v2` (Returns `202 Accepted`)
-*   **Sync**: `POST /api/convert/fhir-to-v2-sync` (Returns `200 OK` with HL7 Message)
-
-### 4. Observability (Admin Only)
-*   **Health**: `GET /actuator/health`
-*   **Metrics**: `GET /actuator/metrics`
+| Method | Endpoint | Role | Use Case | Input | Output |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **POST** | `/api/tenants/onboard` | `ADMIN` | **Onboard New Tenant**: Registers a new hospital/partner for integration access. | JSON `{ "tenantId": "t1", "password": "...", "name": "Hospital A" }` | `200 OK` (Tenant Object) |
+| **PUT** | `/api/tenants/{id}` | `ADMIN` | **Update Tenant**: Modifies tenant details (e.g., password rotation, name change). | JSON `{ "name": "New Name", "password": "newpass" }` | `200 OK` (Updated Object) |
+| **DELETE** | `/api/tenants/{id}` | `ADMIN` | **Offboard Tenant**: Revokes access and removes tenant credentials. | N/A | `200 OK` (Success Message) |
+| **POST** | `/api/convert/v2-to-fhir` | `TENANT` | **Async Ingestion (High Scale)**: Queues HL7 v2 messages for background processing to FHIR. | Plain Text (HL7 Pipe-delimited) | `202 Accepted` `{ "transactionId": "..." }` |
+| **POST** | `/api/convert/v2-to-fhir-sync` | `TENANT` | **Real-time Conversion (Debug)**: Synchronous workflow requiring immediate FHIR result. | Plain Text (HL7 Pipe-delimited) | `200 OK` (FHIR Bundle JSON) |
+| **POST** | `/api/convert/fhir-to-v2` | `TENANT` | **Async Export (High Scale)**: Queues FHIR Bundles for conversion back to legacy HL7 systems. | JSON (FHIR Bundle) | `202 Accepted` `{ "transactionId": "..." }` |
+| **POST** | `/api/convert/fhir-to-v2-sync` | `TENANT` | **Real-time Export (Debug)**: Synchronous workflow requiring immediate HL7 result. | JSON (FHIR Bundle) | `200 OK` (HL7 V2 Message) |
+| **GET** | `/actuator/health` | `ADMIN` | **System Health**: Readiness checks for Load Balancers and internal status (MQ, DB). | N/A | `200 OK` `{ "status": "UP" }` |
+| **GET** | `/actuator/metrics` | `ADMIN` | **Performance Monitoring**: Retrieve CPU, Memory, and JVM stats for autoscaling. | N/A | `200 OK` (Metrics JSON) |
 
 ---
 
