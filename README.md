@@ -79,7 +79,7 @@ This spins up the Transformer and a RabbitMQ instance.
 ```bash
 docker-compose up -d --build
 ```
-*   **API**: `http://localhost:8080`
+*   **API**: `http://localhost:9090`
 *   **RabbitMQ Console**: `http://localhost:15672` (User: `guest` / Pass: `guest`)
 
 ### Option 2: Local Java
