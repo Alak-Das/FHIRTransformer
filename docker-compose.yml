@@ -2,13 +2,17 @@ services:
   fhir-transformer:
     build: .
     ports:
-      - "8080:8080"
+      - "9090:8080"
     restart: unless-stopped
     container_name: fhir-transformer
     depends_on:
       - rabbitmq
+      - mongo
     environment:
       SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/fhirtransformer
+    volumes:
+      - ./src/main/resources/application.properties:/app/config/application.properties
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -17,3 +21,15 @@ services:
       - "15672:15672"
     container_name: fhir-mq
     restart: unless-stopped
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    container_name: fhir-mongo
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:

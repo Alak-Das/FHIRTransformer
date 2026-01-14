@@ -6,10 +6,13 @@ import ca.uhn.hl7v2.HapiContext;
 import ca.uhn.hl7v2.model.Message;
 import ca.uhn.hl7v2.parser.Parser;
 import ca.uhn.hl7v2.util.Terser;
+import com.fhirtransformer.config.TenantContext;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Enumerations;
+import org.hl7.fhir.r4.model.Meta;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Encounter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -19,10 +22,13 @@ public class Hl7ToFhirService {
 
     private final HapiContext hl7Context;
     private final FhirContext fhirContext;
+    private final FhirValidationService fhirValidationService;
 
-    public Hl7ToFhirService() {
+    @Autowired
+    public Hl7ToFhirService(FhirValidationService fhirValidationService) {
         this.hl7Context = new DefaultHapiContext();
         this.fhirContext = FhirContext.forR4();
+        this.fhirValidationService = fhirValidationService;
     }
 
     public String convertHl7ToFhir(String hl7Message) throws Exception {
@@ -35,6 +41,14 @@ public class Hl7ToFhirService {
         Bundle bundle = new Bundle();
         bundle.setType(Bundle.BundleType.TRANSACTION);
         bundle.setId(UUID.randomUUID().toString());
+
+        // Add Tenant ID to Bundle Meta
+        String tenantId = TenantContext.getTenantId();
+        if (tenantId != null) {
+            Meta meta = new Meta();
+            meta.addTag("http://example.org/tenant-id", tenantId, "Tenant ID");
+            bundle.setMeta(meta);
+        }
 
         // Extract Patient Data (Basic mapping from PID segment)
         // Note: Real-world mapping would be much more extensive
@@ -109,6 +123,9 @@ public class Hl7ToFhirService {
             // PV1 segment might not exist or be accessible cleanly
             // Clean handling would be checking message structure
         }
+
+        // Validate the Bundle
+        fhirValidationService.validateAndThrow(bundle);
 
         // Serialize to JSON
         return fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(bundle);

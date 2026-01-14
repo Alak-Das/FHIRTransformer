@@ -5,7 +5,150 @@
         "description": "Comprehensive Integration tests for FHIR Transformer API",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
+    "auth": {
+        "type": "basic",
+        "basic": [
+            {
+                "key": "password",
+                "value": "admin123",
+                "type": "string"
+            },
+            {
+                "key": "username",
+                "value": "admin",
+                "type": "string"
+            }
+        ]
+    },
     "item": [
+        {
+            "name": "Tenant Management",
+            "item": [
+                {
+                    "name": "Onboard Tenant",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Tenant ID matches\", function () {",
+                                    "    pm.expect(jsonData.tenantId).to.eql(\"tenant1\");",
+                                    "});",
+                                    "pm.test(\"Tenant Name matches\", function () {",
+                                    "    pm.expect(jsonData.name).to.eql(\"Test Hospital\");",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "admin123",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"tenantId\": \"tenant1\",\n    \"password\": \"password123\",\n    \"name\": \"Test Hospital\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/tenants/onboard",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "tenants",
+                                "onboard"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Tenant",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Name is updated\", function () {",
+                                    "    pm.expect(jsonData.name).to.eql(\"Updated Hospital Name\");",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "admin123",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Updated Hospital Name\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/tenants/tenant1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "tenants",
+                                "tenant1"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
         {
             "name": "HL7 to FHIR Conversions",
             "item": [
@@ -34,6 +177,21 @@
                         }
                     ],
                     "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password123",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "tenant1",
+                                    "type": "string"
+                                }
+                            ]
+                        },
                         "method": "POST",
                         "header": [
                             {
@@ -88,6 +246,21 @@
                         }
                     ],
                     "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password123",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "tenant1",
+                                    "type": "string"
+                                }
+                            ]
+                        },
                         "method": "POST",
                         "header": [
                             {
@@ -139,6 +312,21 @@
                         }
                     ],
                     "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password123",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "tenant1",
+                                    "type": "string"
+                                }
+                            ]
+                        },
                         "method": "POST",
                         "header": [
                             {
@@ -185,6 +373,21 @@
                         }
                     ],
                     "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password123",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "tenant1",
+                                    "type": "string"
+                                }
+                            ]
+                        },
                         "method": "POST",
                         "header": [
                             {
@@ -230,6 +433,21 @@
                         }
                     ],
                     "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password123",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "tenant1",
+                                    "type": "string"
+                                }
+                            ]
+                        },
                         "method": "POST",
                         "header": [
                             {

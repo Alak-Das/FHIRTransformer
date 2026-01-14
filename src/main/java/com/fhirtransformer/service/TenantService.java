@@ -1,0 +1,50 @@
+package com.fhirtransformer.service;
+
+import com.fhirtransformer.model.Tenant;
+import com.fhirtransformer.repository.TenantRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+@Service
+public class TenantService {
+
+    private final TenantRepository tenantRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Autowired
+    public TenantService(TenantRepository tenantRepository, PasswordEncoder passwordEncoder) {
+        this.tenantRepository = tenantRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    public Tenant onboardTenant(String tenantId, String password, String name) {
+        if (tenantRepository.findByTenantId(tenantId).isPresent()) {
+            throw new RuntimeException("Tenant already exists");
+        }
+        Tenant tenant = new Tenant();
+        tenant.setTenantId(tenantId);
+        tenant.setPassword(passwordEncoder.encode(password));
+        tenant.setName(name);
+        return tenantRepository.save(tenant);
+    }
+
+    public Tenant updateTenant(String tenantId, String password, String name) {
+        Tenant tenant = tenantRepository.findByTenantId(tenantId)
+                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+
+        if (password != null && !password.isEmpty()) {
+            tenant.setPassword(passwordEncoder.encode(password));
+        }
+        if (name != null && !name.isEmpty()) {
+            tenant.setName(name);
+        }
+        return tenantRepository.save(tenant);
+    }
+
+    public void deleteTenant(String tenantId) {
+        Tenant tenant = tenantRepository.findByTenantId(tenantId)
+                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+        tenantRepository.delete(tenant);
+    }
+}
