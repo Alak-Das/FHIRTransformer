@@ -126,7 +126,7 @@ java -jar target/fhir-transformer-0.0.1-SNAPSHOT.jar
 | **POST** | `/api/tenants/onboard` | `ADMIN` | **Onboard New Tenant**: Registers a new hospital/partner for integration access. | JSON (Validated DTO) `{ "tenantId": "t1", "password": "...", "name": "Hospital A" }` | `200 OK` (Tenant Object) |
 | **GET** | `/api/tenants` | `ADMIN` | **List Tenants**: Retrieves a list of all active tenants. | N/A | `200 OK` (List of Tenants) |
 | **PUT** | `/api/tenants/{id}` | `ADMIN` | **Update Tenant**: Modifies tenant details (e.g., password rotation, name change). | JSON (Validated DTO) `{ "name": "New Name", "password": "newpass" }` | `200 OK` (Updated Object) |
-| **GET** | `/api/tenants/{id}/transactions` | `ADMIN` | **Audit Logs**: Retrieve history of transactions for a specific tenant. | Params: `startDate`, `endDate` (ISO 8601) | `200 OK` `{ "totalCount": 5, "transactionIds": [...] }` |
+| **GET** | `/api/tenants/{id}/transactions` | `ADMIN` | **Audit Logs**: Retrieve history of transactions for a specific tenant. | Params: `startDate`, `endDate` (ISO 8601) | `200 OK` `{ "totalCount": 5, "statusCounts": {"ACCEPTED": 5}, "transactions": [...] }` |
 | **DELETE** | `/api/tenants/{id}` | `ADMIN` | **Offboard Tenant**: Revokes access and removes tenant credentials. | N/A | `200 OK` (Success Message) |
 | **POST** | `/api/convert/v2-to-fhir` | `TENANT` | **Async Ingestion (High Scale)**: Queues HL7 v2 messages for background processing to FHIR. | Plain Text (HL7 Pipe-delimited) | `202 Accepted` `{ "transactionId": "..." }` |
 | **POST** | `/api/convert/v2-to-fhir-sync` | `TENANT` | **Real-time Conversion (Debug)**: Synchronous workflow requiring immediate FHIR result. | Plain Text (HL7 Pipe-delimited) | `200 OK` (FHIR Bundle JSON) |
@@ -168,7 +168,7 @@ Ensure the stack is running (Docker), then execute:
 newman run postman/FHIR_Transformer.postman_collection.json -e postman/FHIRTransformer.local.postman_environment.json
 ```
 
-**Passing Criteria**: All 40 assertions must pass.
+**Passing Criteria**: All 45 assertions must pass.
 
 ---
 
