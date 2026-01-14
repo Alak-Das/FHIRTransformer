@@ -13,5 +13,5 @@ import java.util.List;
 @AllArgsConstructor
 public class TransactionSummaryResponse {
     private long totalCount;
-    private List<String> transactionIds;
+    private List<TransactionDTO> transactions;
 }

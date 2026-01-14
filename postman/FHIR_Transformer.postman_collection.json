@@ -888,8 +888,12 @@
                                     "pm.test(\"Returns summary object\", function () {",
                                     "    var jsonData = pm.response.json();",
                                     "    pm.expect(jsonData).to.have.property('totalCount');",
-                                    "    pm.expect(jsonData).to.have.property('transactionIds');",
-                                    "    pm.expect(jsonData.transactionIds).to.be.an('array');",
+                                    "    pm.expect(jsonData).to.have.property('transactions');",
+                                    "    pm.expect(jsonData.transactions).to.be.an('array');",
+                                    "    if (jsonData.transactions.length > 0) {",
+                                    "        pm.expect(jsonData.transactions[0]).to.have.property('transactionId');",
+                                    "        pm.expect(jsonData.transactions[0]).to.have.property('status');",
+                                    "    }",
                                     "});"
                                 ],
                                 "type": "text/javascript"

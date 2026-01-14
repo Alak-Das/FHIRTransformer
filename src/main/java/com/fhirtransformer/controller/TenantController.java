@@ -1,6 +1,7 @@
 package com.fhirtransformer.controller;
 
 import com.fhirtransformer.dto.TransactionSummaryResponse;
+import com.fhirtransformer.dto.TransactionDTO;
 import com.fhirtransformer.dto.TenantOnboardRequest;
 import com.fhirtransformer.dto.TenantUpdateRequest;
 import java.util.stream.Collectors;
@@ -44,13 +45,19 @@ public class TenantController {
         List<TransactionRecord> records = transactionRepository.findByTenantIdAndTimestampBetween(tenantId, startDate,
                 endDate);
 
-        List<String> ids = records.stream()
-                .map(TransactionRecord::getTransactionId)
+        List<TransactionDTO> dtos = records.stream()
+                .map(r -> TransactionDTO.builder()
+                        .id(r.getId()) // Internal ID
+                        .transactionId(r.getTransactionId()) // MSH-10 or Bundle.id
+                        .messageType(r.getMessageType())
+                        .status(r.getStatus())
+                        .timestamp(r.getTimestamp())
+                        .build())
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(TransactionSummaryResponse.builder()
                 .totalCount(records.size())
-                .transactionIds(ids)
+                .transactions(dtos)
                 .build());
     }
 
