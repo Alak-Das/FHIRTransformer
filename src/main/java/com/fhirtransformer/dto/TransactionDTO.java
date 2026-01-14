@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class TransactionDTO {
     private String id; // Internal DB ID
-    private String transactionId; // MSH-10 or Bundle.id
+    private String originalMessageId; // MSH-10 or Bundle.id
     private String messageType;
     private String status;
     private LocalDateTime timestamp;
