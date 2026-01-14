@@ -229,6 +229,16 @@
                     "name": "Sync ADT^A01 (Full Patient + Encounter)",
                     "event": [
                         {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"syncAdt01Id\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
                             "listen": "test",
                             "script": {
                                 "exec": [
@@ -238,6 +248,10 @@
                                     "var jsonData = pm.response.json();",
                                     "pm.test(\"Is FHIR Bundle\", function () {",
                                     "    pm.expect(jsonData.resourceType).to.eql(\"Bundle\");",
+                                    "});",
+                                    "pm.test(\"Bundle ID Matches MSH-10\", function () {",
+                                    "    var expectedId = pm.environment.get(\"syncAdt01Id\");",
+                                    "    pm.expect(jsonData.id).to.eql(expectedId);",
                                     "});",
                                     "pm.test(\"Contains Patient\", function () {",
                                     "    var patient = jsonData.entry.find(e => e.resource.resourceType === \"Patient\");",
@@ -279,7 +293,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01|{{$guid}}|P|2.5\rPID|1||100||DOE^JOHN||19700101|M||||||||||1000\rPV1|1|I"
+                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01|{{syncAdt01Id}}|P|2.5\rPID|1||100||DOE^JOHN||19700101|M||||||||||1000\rPV1|1|I"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
@@ -298,6 +312,16 @@
                     "name": "Sync ADT^A08 (Patient Only - No PV1)",
                     "event": [
                         {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"syncAdt08Id\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
                             "listen": "test",
                             "script": {
                                 "exec": [
@@ -305,6 +329,10 @@
                                     "    pm.response.to.have.status(200);",
                                     "});",
                                     "var jsonData = pm.response.json();",
+                                    "pm.test(\"Bundle ID Matches MSH-10\", function () {",
+                                    "    var expectedId = pm.environment.get(\"syncAdt08Id\");",
+                                    "    pm.expect(jsonData.id).to.eql(expectedId);",
+                                    "});",
                                     "pm.test(\"Contains Patient\", function () {",
                                     "    var patient = jsonData.entry.find(e => e.resource.resourceType === \"Patient\");",
                                     "    pm.expect(patient).to.not.be.undefined;",
@@ -345,7 +373,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A08|{{$guid}}|P|2.5\rPID|1||101||DOE^JANE||19800101|F||||||||||1001"
+                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A08|{{syncAdt08Id}}|P|2.5\rPID|1||101||DOE^JANE||19800101|F||||||||||1001"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
@@ -364,6 +392,16 @@
                     "name": "Sync Unknown Gender (PID-8)",
                     "event": [
                         {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"syncUnknownId\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
                             "listen": "test",
                             "script": {
                                 "exec": [
@@ -371,6 +409,10 @@
                                     "    pm.response.to.have.status(200);",
                                     "});",
                                     "var jsonData = pm.response.json();",
+                                    "pm.test(\"Bundle ID Matches MSH-10\", function () {",
+                                    "    var expectedId = pm.environment.get(\"syncUnknownId\");",
+                                    "    pm.expect(jsonData.id).to.eql(expectedId);",
+                                    "});",
                                     "pm.test(\"Gender is Unknown\", function () {",
                                     "    var patient = jsonData.entry.find(e => e.resource.resourceType === \"Patient\");",
                                     "    pm.expect(patient.resource.gender).to.eql(\"unknown\");",
@@ -406,7 +448,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A08|{{$guid}}|P|2.5\rPID|1||102||SMITH^ALEX||19900101|X||||||||||1002"
+                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A08|{{syncUnknownId}}|P|2.5\rPID|1||102||SMITH^ALEX||19900101|X||||||||||1002"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
@@ -490,6 +532,16 @@
                     "name": "Async Bundle to HL7",
                     "event": [
                         {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"asyncBundleId\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
                             "listen": "test",
                             "script": {
                                 "exec": [
@@ -497,8 +549,10 @@
                                     "    pm.response.to.have.status(202);",
                                     "});",
                                     "pm.test(\"Response body indicates async processing\", function () {",
-                                    "    var textData = pm.response.text();",
-                                    "    pm.expect(textData).to.include(\"Processing asynchronously\");",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.message).to.eql(\"Processing asynchronously\");",
+                                    "    var expectedId = pm.environment.get(\"asyncBundleId\");",
+                                    "    pm.expect(jsonData.transactionId).to.eql(expectedId);",
                                     "});"
                                 ],
                                 "type": "text/javascript"
@@ -516,7 +570,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"identifier\": [ { \"value\": \"{{$guid}}\" } ],\n        \"name\": [ { \"family\": \"SKYWALKER\", \"given\": [\"LUKE\"] } ],\n        \"gender\": \"male\"\n      }\n    }\n  ]\n}"
+                            "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"id\": \"{{asyncBundleId}}\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"identifier\": [ { \"value\": \"{{$guid}}\" } ],\n        \"name\": [ { \"family\": \"SKYWALKER\", \"given\": [\"LUKE\"] } ],\n        \"gender\": \"male\"\n      }\n    }\n  ]\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/convert/fhir-to-v2",
@@ -535,6 +589,16 @@
                     "name": "Bundle (Patient + Encounter)",
                     "event": [
                         {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"syncBundleId\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
                             "listen": "test",
                             "script": {
                                 "exec": [
@@ -546,6 +610,10 @@
                                     "    pm.expect(textData).to.include(\"MSH|\");",
                                     "    pm.expect(textData).to.include(\"PID|\");",
                                     "    pm.expect(textData).to.include(\"PV1|\");",
+                                    "});",
+                                    "pm.test(\"MSH-10 Matches Bundle ID\", function () {",
+                                    "    var expectedId = pm.environment.get(\"syncBundleId\");",
+                                    "    pm.expect(textData).to.include(\"|\" + expectedId + \"|\");",
                                     "});",
                                     "pm.test(\"Contains Patient Data\", function () {",
                                     "    pm.expect(textData).to.include(\"SMITH\");",
@@ -569,7 +637,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"identifier\": [ { \"value\": \"12345\" } ],\n        \"name\": [ { \"family\": \"SMITH\", \"given\": [\"JOHN\"] } ],\n        \"gender\": \"male\"\n      }\n    },\n    {\n      \"resource\": {\n        \"resourceType\": \"Encounter\",\n        \"identifier\": [ { \"value\": \"VISIT-001\" } ],\n        \"class\": { \"code\": \"I\" }\n      }\n    }\n  ]\n}"
+                            "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"id\": \"{{syncBundleId}}\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"identifier\": [ { \"value\": \"12345\" } ],\n        \"name\": [ { \"family\": \"SMITH\", \"given\": [\"JOHN\"] } ],\n        \"gender\": \"male\"\n      }\n    },\n    {\n      \"resource\": {\n        \"resourceType\": \"Encounter\",\n        \"identifier\": [ { \"value\": \"VISIT-001\" } ],\n        \"class\": { \"code\": \"I\" }\n      }\n    }\n  ]\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/convert/fhir-to-v2-sync",
@@ -588,6 +656,16 @@
                     "name": "Sync Bundle (Patient Only)",
                     "event": [
                         {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"syncBundlePatientId\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
                             "listen": "test",
                             "script": {
                                 "exec": [
@@ -597,6 +675,10 @@
                                     "var textData = pm.response.text();",
                                     "pm.test(\"Contains PID\", function () {",
                                     "    pm.expect(textData).to.include(\"PID|\");",
+                                    "});",
+                                    "pm.test(\"MSH-10 Matches Bundle ID\", function () {",
+                                    "    var expectedId = pm.environment.get(\"syncBundlePatientId\");",
+                                    "    pm.expect(textData).to.include(\"|\" + expectedId + \"|\");",
                                     "});",
                                     "pm.test(\"Verify PV1 is empty/minimal or absent data\", function () {",
                                     "    // Since we know the code forces ADT^A01, PV1 might form but checks for values\n    pm.expect(textData).to.not.include(\"VISIT-001\");\n});"
@@ -616,7 +698,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"identifier\": [ { \"value\": \"99999\" } ],\n        \"name\": [ { \"family\": \"SOLO\", \"given\": [\"HAN\"] } ],\n        \"gender\": \"male\"\n      }\n    }\n  ]\n}"
+                            "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"id\": \"{{syncBundlePatientId}}\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"identifier\": [ { \"value\": \"99999\" } ],\n        \"name\": [ { \"family\": \"SOLO\", \"given\": [\"HAN\"] } ],\n        \"gender\": \"male\"\n      }\n    }\n  ]\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/convert/fhir-to-v2-sync",
