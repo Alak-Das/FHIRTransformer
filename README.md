@@ -90,7 +90,7 @@ The application implements a robust **Role-Based Access Control (RBAC)** system.
 | Variable | Default (Dev) | Description |
 | :--- | :--- | :--- |
 | `ADMIN_USERNAME` | `admin` | Username for the System Admin. |
-| `ADMIN_PASSWORD` | `admin123` | Password for the System Admin. |
+| `ADMIN_PASSWORD` | `password` | Password for the System Admin. |
 | `RABBITMQ_PASSWORD`| `guest` | Password for RabbitMQ user. |
 | `MONGODB_URI` | `mongodb://...` | Connection string for MongoDB. |
 
@@ -185,7 +185,7 @@ Key `application.properties` highlights:
 
 ```properties
 # Secrets (Env Var > Default)
-app.admin.password=${ADMIN_PASSWORD:admin123}
+app.admin.password=${ADMIN_PASSWORD:password}
 
 # RabbitMQ Tuning
 spring.rabbitmq.listener.simple.concurrency=5

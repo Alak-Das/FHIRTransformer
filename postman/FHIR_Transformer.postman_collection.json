@@ -10,7 +10,7 @@
         "basic": [
             {
                 "key": "password",
-                "value": "admin123",
+                "value": "password",
                 "type": "string"
             },
             {
@@ -59,7 +59,7 @@
                             "basic": [
                                 {
                                     "key": "password",
-                                    "value": "admin123",
+                                    "value": "password",
                                     "type": "string"
                                 },
                                 {
@@ -120,7 +120,7 @@
                             "basic": [
                                 {
                                     "key": "password",
-                                    "value": "admin123",
+                                    "value": "password",
                                     "type": "string"
                                 },
                                 {
@@ -1004,7 +1004,7 @@
                             "basic": [
                                 {
                                     "key": "password",
-                                    "value": "admin123",
+                                    "value": "password",
                                     "type": "string"
                                 },
                                 {
@@ -1064,7 +1064,7 @@
                             "basic": [
                                 {
                                     "key": "password",
-                                    "value": "admin123",
+                                    "value": "password",
                                     "type": "string"
                                 },
                                 {
@@ -1130,7 +1130,7 @@
                             "basic": [
                                 {
                                     "key": "password",
-                                    "value": "admin123",
+                                    "value": "password",
                                     "type": "string"
                                 },
                                 {
@@ -1191,7 +1191,7 @@
                             "basic": [
                                 {
                                     "key": "password",
-                                    "value": "admin123",
+                                    "value": "password",
                                     "type": "string"
                                 },
                                 {
@@ -1247,7 +1247,7 @@
                             "basic": [
                                 {
                                     "key": "password",
-                                    "value": "admin123",
+                                    "value": "password",
                                     "type": "string"
                                 },
                                 {
