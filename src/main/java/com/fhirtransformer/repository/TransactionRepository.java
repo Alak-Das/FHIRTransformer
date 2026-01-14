@@ -10,4 +10,6 @@ import java.util.List;
 @Repository
 public interface TransactionRepository extends MongoRepository<TransactionRecord, String> {
     List<TransactionRecord> findByTenantIdAndTimestampBetween(String tenantId, LocalDateTime start, LocalDateTime end);
+
+    java.util.Optional<TransactionRecord> findByTransactionId(String transactionId);
 }
