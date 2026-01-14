@@ -14,6 +14,8 @@ import java.util.Map;
 @AllArgsConstructor
 public class TransactionSummaryResponse {
     private long totalCount;
+    private int totalPages;
+    private int currentPage;
     private Map<String, Long> statusCounts;
     private List<TransactionDTO> transactions;
 }

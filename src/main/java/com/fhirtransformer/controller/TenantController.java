@@ -5,6 +5,10 @@ import com.fhirtransformer.dto.TransactionDTO;
 import com.fhirtransformer.dto.TenantOnboardRequest;
 import com.fhirtransformer.dto.TenantUpdateRequest;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import com.fhirtransformer.dto.StatusCount;
 import java.util.Map;
 import com.fhirtransformer.model.Tenant;
 import com.fhirtransformer.model.TransactionRecord;
@@ -41,18 +45,23 @@ public class TenantController {
     public ResponseEntity<TransactionSummaryResponse> getTenantTransactions(
             @PathVariable String tenantId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
 
-        List<TransactionRecord> records = transactionRepository.findByTenantIdAndTimestampBetween(tenantId, startDate,
-                endDate);
+        Page<TransactionRecord> pageRecords = transactionRepository.findByTenantIdAndTimestampBetween(
+                tenantId, startDate, endDate, PageRequest.of(page, size, Sort.by("timestamp").descending()));
 
-        Map<String, Long> statusCounts = records.stream()
-                .collect(Collectors.groupingBy(TransactionRecord::getStatus, Collectors.counting()));
+        List<StatusCount> statusStats = transactionRepository.countStatusByTenantIdAndTimestampBetween(
+                tenantId, startDate, endDate);
 
-        List<TransactionDTO> dtos = records.stream()
+        Map<String, Long> statusCounts = statusStats.stream()
+                .collect(Collectors.toMap(StatusCount::get_id, StatusCount::getCount));
+
+        List<TransactionDTO> dtos = pageRecords.getContent().stream()
                 .map(r -> TransactionDTO.builder()
-                        .fhirTransformerId(r.getId()) // Internal ID
-                        .originalMessageId(r.getTransactionId()) // MSH-10 or Bundle.id
+                        .fhirTransformerId(r.getId())
+                        .originalMessageId(r.getTransactionId())
                         .messageType(r.getMessageType())
                         .status(r.getStatus())
                         .timestamp(r.getTimestamp())
@@ -60,7 +69,9 @@ public class TenantController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(TransactionSummaryResponse.builder()
-                .totalCount(records.size())
+                .totalCount(pageRecords.getTotalElements())
+                .totalPages(pageRecords.getTotalPages())
+                .currentPage(pageRecords.getNumber())
                 .statusCounts(statusCounts)
                 .transactions(dtos)
                 .build());

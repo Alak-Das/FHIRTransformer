@@ -4,6 +4,8 @@ import com.fhirtransformer.model.TransactionRecord;
 import com.fhirtransformer.repository.TransactionRepository;
 import com.fhirtransformer.service.Hl7ToFhirService;
 import com.fhirtransformer.service.FhirToHl7Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +29,8 @@ import java.util.Arrays;
 @RestController
 @RequestMapping("/api/convert")
 public class ConverterController {
+
+    private static final Logger log = LoggerFactory.getLogger(ConverterController.class);
 
     private final Hl7ToFhirService hl7ToFhirService;
     private final FhirToHl7Service fhirToHl7Service;
@@ -159,7 +163,7 @@ public class ConverterController {
             transactionRepository.save(record);
         } catch (Exception e) {
             // Log error but don't fail the request
-            System.err.println("Failed to save transaction log: " + e.getMessage());
+            log.error("Failed to save transaction log: {}", e.getMessage(), e);
         }
     }
 

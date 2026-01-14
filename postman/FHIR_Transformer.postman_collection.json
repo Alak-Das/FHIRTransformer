@@ -888,6 +888,8 @@
                                     "pm.test(\"Returns summary object\", function () {",
                                     "    var jsonData = pm.response.json();",
                                     "    pm.expect(jsonData).to.have.property('totalCount');",
+                                    "    pm.expect(jsonData).to.have.property('totalPages');",
+                                    "    pm.expect(jsonData).to.have.property('currentPage');",
                                     "    pm.expect(jsonData).to.have.property('statusCounts');",
                                     "    pm.expect(jsonData.statusCounts).to.be.an('object');",
                                     "    pm.expect(jsonData).to.have.property('transactions');",
