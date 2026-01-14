@@ -13,6 +13,7 @@ import org.hl7.fhir.r4.model.Encounter;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.Date;
 
@@ -22,9 +23,10 @@ public class FhirToHl7Service {
     private final HapiContext hl7Context;
     private final FhirContext fhirContext;
 
-    public FhirToHl7Service() {
+    @Autowired
+    public FhirToHl7Service(FhirContext fhirContext) {
         this.hl7Context = new DefaultHapiContext();
-        this.fhirContext = FhirContext.forR4();
+        this.fhirContext = fhirContext;
     }
 
     public String convertFhirToHl7(String fhirJson) throws Exception {

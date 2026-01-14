@@ -25,9 +25,9 @@ public class Hl7ToFhirService {
     private final FhirValidationService fhirValidationService;
 
     @Autowired
-    public Hl7ToFhirService(FhirValidationService fhirValidationService) {
+    public Hl7ToFhirService(FhirValidationService fhirValidationService, FhirContext fhirContext) {
         this.hl7Context = new DefaultHapiContext();
-        this.fhirContext = FhirContext.forR4();
+        this.fhirContext = fhirContext;
         this.fhirValidationService = fhirValidationService;
     }
 

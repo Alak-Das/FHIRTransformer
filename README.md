@@ -183,7 +183,7 @@ app.admin.password=${ADMIN_PASSWORD:admin123}
 # RabbitMQ Tuning
 spring.rabbitmq.listener.simple.concurrency=5
 spring.rabbitmq.listener.simple.max-concurrency=10
-spring.rabbitmq.listener.simple.prefetch=1
+spring.rabbitmq.listener.simple.prefetch=50
 
 # Actuator Security
 management.endpoints.web.exposure.include=health,info,metrics
