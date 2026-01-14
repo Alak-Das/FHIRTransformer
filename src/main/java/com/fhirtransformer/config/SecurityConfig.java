@@ -31,10 +31,10 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
                         .requestMatchers("/api/tenants/onboard", "/api/tenants/**").hasRole("ADMIN")
                         .requestMatchers("/api/convert/**").hasAnyRole("ADMIN", "TENANT")
-                        .anyRequest().permitAll())
+                        .anyRequest().authenticated())
                 .httpBasic(withDefaults());
         return http.build();
     }
