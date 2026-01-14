@@ -137,29 +137,36 @@ java -jar target/fhir-transformer-0.0.1-SNAPSHOT.jar
 
 ## ⚠️ Error Handling
 
-The API uses a standardized JSON error format for all failures:
+The API uses a standardized, timestamped JSON error format for all failures:
 
 ```json
 {
-  "status": "400",
-  "error": "Error message description"
+  "timestamp": "2024-03-20T10:15:30.123456",
+  "status": 400,
+  "error": "Validation Error",
+  "message": "Input validation failed",
+  "details": {
+    "tenantId": "must not be blank",
+    "password": "size must be between 6 and 2147483647"
+  }
 }
 ```
-*   `400 Bad Request`: Validation failure or malformed input.
-*   `404 Not Found`: Resource does not exist.
-*   `409 Conflict`: Resource already exists.
-*   `500 Internal Error`: Unexpected server error.
+*   **status**: HTTP Status Code.
+*   **error**: Short error category.
+*   **message**: Human-readable description.
+*   **details**: (Optional) Field-level validation errors.
 
 ---
 
 ## 🧪 Testing
 
-The project uses a **Postman Collection** that implements a complete lifecycle test strategy.
+The project uses a **Postman Collection** that implements a complete lifecycle test strategy, including positive, negative, and security scenarios.
 
 ### Lifecycle Flow
 1.  **Setup**: Admin onboards a new Tenant (`tenant1`).
-2.  **Execution**: `tenant1` performs ~10 different conversion tests (Async, Sync, Negative cases).
-3.  **Teardown**: Admin updates and then deletes `tenant1`.
+2.  **Execution**: `tenant1` performs varied conversion tests (Async, Sync, Edge cases).
+3.  **Security**: Verify RBAC (Tenant cannot access Admin APIs) and Input Validation.
+4.  **Teardown**: Admin updates and then deletes `tenant1`.
 
 ### Running Tests (Newman)
 Ensure the stack is running (Docker), then execute:
@@ -168,7 +175,7 @@ Ensure the stack is running (Docker), then execute:
 newman run postman/FHIR_Transformer.postman_collection.json -e postman/FHIRTransformer.local.postman_environment.json
 ```
 
-**Passing Criteria**: All 45 assertions must pass.
+**Passing Criteria**: All assertions (approx. 55+) must pass.
 
 ---
 
