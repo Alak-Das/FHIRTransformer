@@ -19,8 +19,9 @@ A high-performance, secure, and multi-tenant integration service bridging **Lega
     *   **DoS Protection**: Pre-computed credential hashing to prevent CPU exhaustion.
     *   **Fail-Closed Security**: Default deny-all policy for unknown endpoints.
     *   **Secure Observability**: Metrics restricted to Admin users.
-*   **Reliability**: Built-in **Dead Letter Queue (DLQ)** handling for failed messages.
+*   **Reliability**: Built-in **Dead Letter Queue (DLQ)** handling and **Health Checks** for dependent services.
 *   **Containerized**: Production-ready Docker images and Compose setup.
+*   **Code Quality**: Strict DTO-based input validation and global exception handling.
 
 ---
 
@@ -122,8 +123,9 @@ java -jar target/fhir-transformer-0.0.1-SNAPSHOT.jar
 
 | Method | Endpoint | Role | Use Case | Input | Output |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **POST** | `/api/tenants/onboard` | `ADMIN` | **Onboard New Tenant**: Registers a new hospital/partner for integration access. | JSON `{ "tenantId": "t1", "password": "...", "name": "Hospital A" }` | `200 OK` (Tenant Object) |
-| **PUT** | `/api/tenants/{id}` | `ADMIN` | **Update Tenant**: Modifies tenant details (e.g., password rotation, name change). | JSON `{ "name": "New Name", "password": "newpass" }` | `200 OK` (Updated Object) |
+| **POST** | `/api/tenants/onboard` | `ADMIN` | **Onboard New Tenant**: Registers a new hospital/partner for integration access. | JSON (Validated DTO) `{ "tenantId": "t1", "password": "...", "name": "Hospital A" }` | `200 OK` (Tenant Object) |
+| **GET** | `/api/tenants` | `ADMIN` | **List Tenants**: Retrieves a list of all active tenants. | N/A | `200 OK` (List of Tenants) |
+| **PUT** | `/api/tenants/{id}` | `ADMIN` | **Update Tenant**: Modifies tenant details (e.g., password rotation, name change). | JSON (Validated DTO) `{ "name": "New Name", "password": "newpass" }` | `200 OK` (Updated Object) |
 | **DELETE** | `/api/tenants/{id}` | `ADMIN` | **Offboard Tenant**: Revokes access and removes tenant credentials. | N/A | `200 OK` (Success Message) |
 | **POST** | `/api/convert/v2-to-fhir` | `TENANT` | **Async Ingestion (High Scale)**: Queues HL7 v2 messages for background processing to FHIR. | Plain Text (HL7 Pipe-delimited) | `202 Accepted` `{ "transactionId": "..." }` |
 | **POST** | `/api/convert/v2-to-fhir-sync` | `TENANT` | **Real-time Conversion (Debug)**: Synchronous workflow requiring immediate FHIR result. | Plain Text (HL7 Pipe-delimited) | `200 OK` (FHIR Bundle JSON) |
@@ -131,6 +133,21 @@ java -jar target/fhir-transformer-0.0.1-SNAPSHOT.jar
 | **POST** | `/api/convert/fhir-to-v2-sync` | `TENANT` | **Real-time Export (Debug)**: Synchronous workflow requiring immediate HL7 result. | JSON (FHIR Bundle) | `200 OK` (HL7 V2 Message) |
 | **GET** | `/actuator/health` | `ADMIN` | **System Health**: Readiness checks for Load Balancers and internal status (MQ, DB). | N/A | `200 OK` `{ "status": "UP" }` |
 | **GET** | `/actuator/metrics` | `ADMIN` | **Performance Monitoring**: Retrieve CPU, Memory, and JVM stats for autoscaling. | N/A | `200 OK` (Metrics JSON) |
+
+## ⚠️ Error Handling
+
+The API uses a standardized JSON error format for all failures:
+
+```json
+{
+  "status": "400",
+  "error": "Error message description"
+}
+```
+*   `400 Bad Request`: Validation failure or malformed input.
+*   `404 Not Found`: Resource does not exist.
+*   `409 Conflict`: Resource already exists.
+*   `500 Internal Error`: Unexpected server error.
 
 ---
 
@@ -150,7 +167,7 @@ Ensure the stack is running (Docker), then execute:
 newman run postman/FHIR_Transformer.postman_collection.json -e postman/FHIRTransformer.local.postman_environment.json
 ```
 
-**Passing Criteria**: All 36 assertions must pass.
+**Passing Criteria**: All 38 assertions must pass.
 
 ---
 
