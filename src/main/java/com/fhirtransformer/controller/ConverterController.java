@@ -64,9 +64,9 @@ public class ConverterController {
             String processedMessage = result[0];
             transactionId = result[1];
 
-            rabbitTemplate.convertAndSend(exchange, routingKey, processedMessage);
+            logTransaction(principal.getName(), transactionId, "V2_TO_FHIR_ASYNC", "QUEUED");
 
-            logTransaction(principal.getName(), transactionId, "V2_TO_FHIR_ASYNC", "ACCEPTED");
+            rabbitTemplate.convertAndSend(exchange, routingKey, processedMessage);
 
             Map<String, String> response = new HashMap<>();
             response.put("status", "Accepted");
@@ -110,9 +110,9 @@ public class ConverterController {
             String processedJson = result[0];
             transactionId = result[1];
 
-            rabbitTemplate.convertAndSend(fhirExchange, fhirRoutingKey, processedJson);
+            logTransaction(principal.getName(), transactionId, "FHIR_TO_V2_ASYNC", "QUEUED");
 
-            logTransaction(principal.getName(), transactionId, "FHIR_TO_V2_ASYNC", "ACCEPTED");
+            rabbitTemplate.convertAndSend(fhirExchange, fhirRoutingKey, processedJson);
 
             Map<String, String> response = new HashMap<>();
             response.put("status", "Accepted");
