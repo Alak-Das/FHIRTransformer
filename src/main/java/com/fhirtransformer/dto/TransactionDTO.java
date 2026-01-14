@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TransactionDTO {
-    private String id; // Internal DB ID
+    private String fhirTransformerId; // Internal DB ID
     private String originalMessageId; // MSH-10 or Bundle.id
     private String messageType;
     private String status;

@@ -893,6 +893,7 @@
                                     "    pm.expect(jsonData).to.have.property('transactions');",
                                     "    pm.expect(jsonData.transactions).to.be.an('array');",
                                     "    if (jsonData.transactions.length > 0) {",
+                                    "        pm.expect(jsonData.transactions[0]).to.have.property('fhirTransformerId');",
                                     "        pm.expect(jsonData.transactions[0]).to.have.property('originalMessageId');",
                                     "        pm.expect(jsonData.transactions[0]).to.have.property('status');",
                                     "    }",

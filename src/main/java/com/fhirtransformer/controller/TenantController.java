@@ -51,7 +51,7 @@ public class TenantController {
 
         List<TransactionDTO> dtos = records.stream()
                 .map(r -> TransactionDTO.builder()
-                        .id(r.getId()) // Internal ID
+                        .fhirTransformerId(r.getId()) // Internal ID
                         .originalMessageId(r.getTransactionId()) // MSH-10 or Bundle.id
                         .messageType(r.getMessageType())
                         .status(r.getStatus())
