@@ -43,6 +43,11 @@ public class FhirToHl7Service {
         msh.getReceivingApplication().getNamespaceID().setValue("LegacyApp");
         msh.getDateTimeOfMessage().getTime().setValue(new Date());
 
+        // Use Bundle ID as MSH-10 (Preserve Transaction ID)
+        if (bundle.hasId()) {
+            msh.getMessageControlID().setValue(bundle.getIdElement().getIdPart());
+        }
+
         // Extract Patient and Encounter from Bundle
         Patient patient = null;
         Encounter encounter = null;

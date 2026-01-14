@@ -40,7 +40,14 @@ public class Hl7ToFhirService {
         // Create FHIR Bundle
         Bundle bundle = new Bundle();
         bundle.setType(Bundle.BundleType.TRANSACTION);
-        bundle.setId(UUID.randomUUID().toString());
+
+        // Use MSH-10 as Bundle Transaction ID (Preserve Integrity)
+        String msh10 = terser.get("/.MSH-10");
+        if (msh10 != null && !msh10.isEmpty()) {
+            bundle.setId(msh10);
+        } else {
+            bundle.setId(UUID.randomUUID().toString());
+        }
 
         // Add Tenant ID to Bundle Meta
         String tenantId = TenantContext.getTenantId();
