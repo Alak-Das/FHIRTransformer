@@ -1,14 +1,20 @@
 package com.fhirtransformer.controller;
 
+import com.fhirtransformer.dto.TransactionSummaryResponse;
 import com.fhirtransformer.dto.TenantOnboardRequest;
 import com.fhirtransformer.dto.TenantUpdateRequest;
+import java.util.stream.Collectors;
 import com.fhirtransformer.model.Tenant;
+import com.fhirtransformer.model.TransactionRecord;
+import com.fhirtransformer.repository.TransactionRepository;
 import com.fhirtransformer.service.TenantService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -16,15 +22,36 @@ import java.util.List;
 public class TenantController {
 
     private final TenantService tenantService;
+    private final TransactionRepository transactionRepository;
 
     @Autowired
-    public TenantController(TenantService tenantService) {
+    public TenantController(TenantService tenantService, TransactionRepository transactionRepository) {
         this.tenantService = tenantService;
+        this.transactionRepository = transactionRepository;
     }
 
     @GetMapping
     public ResponseEntity<List<Tenant>> getAllTenants() {
         return ResponseEntity.ok(tenantService.getAllTenants());
+    }
+
+    @GetMapping("/{tenantId}/transactions")
+    public ResponseEntity<TransactionSummaryResponse> getTenantTransactions(
+            @PathVariable String tenantId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+
+        List<TransactionRecord> records = transactionRepository.findByTenantIdAndTimestampBetween(tenantId, startDate,
+                endDate);
+
+        List<String> ids = records.stream()
+                .map(TransactionRecord::getTransactionId)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(TransactionSummaryResponse.builder()
+                .totalCount(records.size())
+                .transactionIds(ids)
+                .build());
     }
 
     @PostMapping("/onboard")

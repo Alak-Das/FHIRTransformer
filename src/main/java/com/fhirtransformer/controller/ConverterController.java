@@ -1,5 +1,7 @@
 package com.fhirtransformer.controller;
 
+import com.fhirtransformer.model.TransactionRecord;
+import com.fhirtransformer.repository.TransactionRepository;
 import com.fhirtransformer.service.Hl7ToFhirService;
 import com.fhirtransformer.service.FhirToHl7Service;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -13,6 +15,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.security.Principal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.Map;
 import java.util.HashMap;
@@ -27,6 +31,8 @@ public class ConverterController {
     private final Hl7ToFhirService hl7ToFhirService;
     private final FhirToHl7Service fhirToHl7Service;
     private final RabbitTemplate rabbitTemplate;
+    private final TransactionRepository transactionRepository;
+    private final ObjectMapper objectMapper;
 
     @Value("${app.rabbitmq.exchange}")
     private String exchange;
@@ -40,27 +46,27 @@ public class ConverterController {
     @Value("${app.rabbitmq.fhir.routingkey}")
     private String fhirRoutingKey;
 
-    private final ObjectMapper objectMapper;
-
     @Autowired
     public ConverterController(Hl7ToFhirService hl7ToFhirService, FhirToHl7Service fhirToHl7Service,
-            RabbitTemplate rabbitTemplate) {
+            RabbitTemplate rabbitTemplate, TransactionRepository transactionRepository) {
         this.hl7ToFhirService = hl7ToFhirService;
         this.fhirToHl7Service = fhirToHl7Service;
         this.rabbitTemplate = rabbitTemplate;
+        this.transactionRepository = transactionRepository;
         this.objectMapper = new ObjectMapper();
     }
 
     @PostMapping(value = "/v2-to-fhir", consumes = MediaType.TEXT_PLAIN_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> convertToFhir(@RequestBody String hl7Message) {
+    public ResponseEntity<String> convertToFhir(@RequestBody String hl7Message, Principal principal) {
+        String transactionId = null;
         try {
-            // Check/Inject Transaction ID (MSH-10)
             String[] result = ensureHl7TransactionId(hl7Message);
             String processedMessage = result[0];
-            String transactionId = result[1];
+            transactionId = result[1];
 
-            // Publish to RabbitMQ
             rabbitTemplate.convertAndSend(exchange, routingKey, processedMessage);
+
+            logTransaction(principal.getName(), transactionId, "V2_TO_FHIR_ASYNC", "ACCEPTED");
 
             Map<String, String> response = new HashMap<>();
             response.put("status", "Accepted");
@@ -69,31 +75,44 @@ public class ConverterController {
 
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(objectMapper.writeValueAsString(response));
         } catch (Exception e) {
+            logTransaction(principal != null ? principal.getName() : "UNKNOWN", transactionId, "V2_TO_FHIR_ASYNC",
+                    "FAILED");
             return ResponseEntity.badRequest()
                     .body("{\"error\": \"Failed to process message: " + e.getMessage() + "\"}");
         }
     }
 
     @PostMapping(value = "/v2-to-fhir-sync", consumes = MediaType.TEXT_PLAIN_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> convertToFhirSync(@RequestBody String hl7Message) {
+    public ResponseEntity<String> convertToFhirSync(@RequestBody String hl7Message, Principal principal) {
+        String transactionId = null;
         try {
-            String fhirJson = hl7ToFhirService.convertHl7ToFhir(hl7Message);
+            String[] result = ensureHl7TransactionId(hl7Message);
+            String processedMessage = result[0];
+            transactionId = result[1];
+
+            String fhirJson = hl7ToFhirService.convertHl7ToFhir(processedMessage);
+
+            logTransaction(principal.getName(), transactionId, "V2_TO_FHIR_SYNC", "COMPLETED");
+
             return ResponseEntity.ok(fhirJson);
         } catch (Exception e) {
+            logTransaction(principal != null ? principal.getName() : "UNKNOWN", transactionId, "V2_TO_FHIR_SYNC",
+                    "FAILED");
             return ResponseEntity.badRequest().body("{\"error\": \"" + e.getMessage() + "\"}");
         }
     }
 
     @PostMapping(value = "/fhir-to-v2", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> convertToHl7(@RequestBody String fhirJson) {
+    public ResponseEntity<String> convertToHl7(@RequestBody String fhirJson, Principal principal) {
+        String transactionId = null;
         try {
-            // Check/Inject Transaction ID (Bundle.id)
             String[] result = ensureFhirTransactionId(fhirJson);
             String processedJson = result[0];
-            String transactionId = result[1];
+            transactionId = result[1];
 
-            // Publish to RabbitMQ
             rabbitTemplate.convertAndSend(fhirExchange, fhirRoutingKey, processedJson);
+
+            logTransaction(principal.getName(), transactionId, "FHIR_TO_V2_ASYNC", "ACCEPTED");
 
             Map<String, String> response = new HashMap<>();
             response.put("status", "Accepted");
@@ -102,45 +121,61 @@ public class ConverterController {
 
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(objectMapper.writeValueAsString(response));
         } catch (Exception e) {
+            logTransaction(principal != null ? principal.getName() : "UNKNOWN", transactionId, "FHIR_TO_V2_ASYNC",
+                    "FAILED");
             return ResponseEntity.badRequest()
                     .body("{\"error\": \"Failed to process message: " + e.getMessage() + "\"}");
         }
     }
 
     @PostMapping(value = "/fhir-to-v2-sync", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.TEXT_PLAIN_VALUE)
-    public ResponseEntity<String> convertToHl7Sync(@RequestBody String fhirJson) {
+    public ResponseEntity<String> convertToHl7Sync(@RequestBody String fhirJson, Principal principal) {
+        String transactionId = null;
         try {
-            String hl7Message = fhirToHl7Service.convertFhirToHl7(fhirJson);
+            String[] result = ensureFhirTransactionId(fhirJson);
+            String processedJson = result[0];
+            transactionId = result[1];
+
+            String hl7Message = fhirToHl7Service.convertFhirToHl7(processedJson);
+
+            logTransaction(principal.getName(), transactionId, "FHIR_TO_V2_SYNC", "COMPLETED");
+
             return ResponseEntity.ok(hl7Message);
         } catch (Exception e) {
+            logTransaction(principal != null ? principal.getName() : "UNKNOWN", transactionId, "FHIR_TO_V2_SYNC",
+                    "FAILED");
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
 
-    // Helper: Ensure HL7 MSH-10 exists
+    private void logTransaction(String tenantId, String transactionId, String type, String status) {
+        try {
+            TransactionRecord record = new TransactionRecord();
+            record.setTenantId(tenantId);
+            record.setTransactionId(transactionId);
+            record.setMessageType(type);
+            record.setStatus(status);
+            record.setTimestamp(LocalDateTime.now());
+            transactionRepository.save(record);
+        } catch (Exception e) {
+            // Log error but don't fail the request
+            System.err.println("Failed to save transaction log: " + e.getMessage());
+        }
+    }
+
     private String[] ensureHl7TransactionId(String hl7Message) {
         String[] segments = hl7Message.split("\r");
         String mshSegment = segments[0];
-        String[] mshFields = mshSegment.split("\\|", -1); // Keep empty trailing fields
+        String[] mshFields = mshSegment.split("\\|", -1);
 
         String transactionId;
         boolean idGenerated = false;
-
-        // MSH-10 is at index 9 (0-based, assuming MSH is part of the split if we split
-        // by |)
-        // Actually MSH fields: MSH (0), Separators (1), App (2)...
-        // Standard split on "|" of "MSH|^~\&|..." -> ["MSH", "^~\&", "App", ...]
-        // MSH-3 is index 2. MSH-10 is index 9.
 
         if (mshFields.length > 9 && !mshFields[9].isEmpty()) {
             transactionId = mshFields[9];
         } else {
             transactionId = UUID.randomUUID().toString();
-            if (mshFields.length <= 9) {
-                // Resize array implies rebuilding logic which is complex with array.
-                // Simpler to just use StringBuilder logic for MSH.
-            }
-            idGenerated = true;
+            idGenerated = true; // Flag that we need to inject it
         }
 
         if (!idGenerated) {
@@ -148,60 +183,20 @@ public class ConverterController {
         }
 
         // Reconstruct MSH with new ID
-        StringBuilder newMsh = new StringBuilder();
-        for (int i = 0; i < mshFields.length; i++) {
-            if (i == 9) {
-                newMsh.append(transactionId);
-            } else {
-                newMsh.append(mshFields[i]);
-            }
-            if (i < mshFields.length - 1) {
-                newMsh.append("|");
-            }
+        List<String> fieldList = new ArrayList<>(Arrays.asList(mshFields));
+
+        while (fieldList.size() <= 9) {
+            fieldList.add("");
         }
 
-        // Handle case where MSH was too short
-        while (newMsh.toString().split("\\|", -1).length <= 10) {
-            newMsh.append("|");
-            if (newMsh.toString().split("\\|", -1).length == 10) {
-                newMsh.append(transactionId);
-            }
-        }
+        fieldList.set(9, transactionId);
 
-        // Simplified Logic: Just regex replace or better yet, proper index handling
-        // If we really need to inject, let's just do it cleanly.
-        // Re-do logic:
+        String newMshSegment = String.join("|", fieldList);
+        segments[0] = newMshSegment;
 
-        if (idGenerated) {
-            // We need to inject transactionId at MSH-10
-            // Re-split strictly
-            String[] fields = mshSegment.split("\\|");
-            List<String> fieldList = new ArrayList<>(Arrays.asList(fields));
-            while (fieldList.size() < 10) {
-                fieldList.add("");
-            }
-            if (fieldList.size() == 10) { // Index 9 is the 10th element
-                fieldList.add(""); // Move to index 10? No MSH-10 is index 9.
-                // Java split: "A|B".split -> [A, B].
-                // MSH-1 is logical separator.
-                // "MSH|^~\&|App|Fac|...". indices: 0=MSH, 1=^~\&, 2=App... 9=MSH-10.
-            }
-
-            // Ensure size
-            while (fieldList.size() <= 9) {
-                fieldList.add("");
-            }
-            fieldList.set(9, transactionId);
-
-            String newMshSegment = String.join("|", fieldList);
-            segments[0] = newMshSegment;
-            return new String[] { String.join("\r", segments), transactionId };
-        }
-
-        return new String[] { hl7Message, transactionId };
+        return new String[] { String.join("\r", segments), transactionId };
     }
 
-    // Helper: Ensure FHIR Bundle Key
     private String[] ensureFhirTransactionId(String fhirJson) throws JsonProcessingException {
         JsonNode root = objectMapper.readTree(fhirJson);
         String transactionId;
