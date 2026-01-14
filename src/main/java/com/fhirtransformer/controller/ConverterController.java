@@ -64,7 +64,7 @@ public class ConverterController {
             String processedMessage = result[0];
             transactionId = result[1];
 
-            logTransaction(principal.getName(), transactionId, "V2_TO_FHIR_ASYNC", "QUEUED");
+            logTransaction(principal.getName(), transactionId, "V2_TO_FHIR_ASYNC", "ACCEPTED");
 
             rabbitTemplate.convertAndSend(exchange, routingKey, processedMessage);
 
