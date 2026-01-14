@@ -31,16 +31,23 @@
                             "listen": "test",
                             "script": {
                                 "exec": [
-                                    "pm.test(\"Status code is 200\", function () {",
-                                    "    pm.response.to.have.status(200);",
+                                    "pm.test(\"Status code is 200 or 400 (already exists)\", function () {",
+                                    "    if (pm.response.code === 200) {",
+                                    "        pm.response.to.have.status(200);",
+                                    "    } else {",
+                                    "        pm.response.to.have.status(400);",
+                                    "        pm.expect(pm.response.text()).to.include(\"exists\");",
+                                    "    }",
                                     "});",
-                                    "var jsonData = pm.response.json();",
-                                    "pm.test(\"Tenant ID matches\", function () {",
-                                    "    pm.expect(jsonData.tenantId).to.eql(\"tenant1\");",
-                                    "});",
-                                    "pm.test(\"Tenant Name matches\", function () {",
-                                    "    pm.expect(jsonData.name).to.eql(\"Test Hospital\");",
-                                    "});"
+                                    "if (pm.response.code === 200) {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.test(\"Tenant ID matches\", function () {",
+                                    "        pm.expect(jsonData.tenantId).to.eql(\"tenant1\");",
+                                    "    });",
+                                    "    pm.test(\"Tenant Name matches\", function () {",
+                                    "        pm.expect(jsonData.name).to.eql(\"Test Hospital\");",
+                                    "    });",
+                                    "}"
                                 ],
                                 "type": "text/javascript"
                             }
