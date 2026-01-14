@@ -32,7 +32,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").hasRole("ADMIN")
-                        .requestMatchers("/api/tenants/onboard", "/api/tenants/**").hasRole("ADMIN")
+                        .requestMatchers("/api/tenants", "/api/tenants/**").hasRole("ADMIN")
                         .requestMatchers("/api/convert/**").hasAnyRole("ADMIN", "TENANT")
                         .anyRequest().authenticated())
                 .httpBasic(withDefaults());

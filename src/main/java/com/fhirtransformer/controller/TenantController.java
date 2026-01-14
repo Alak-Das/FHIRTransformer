@@ -1,12 +1,15 @@
 package com.fhirtransformer.controller;
 
+import com.fhirtransformer.dto.TenantOnboardRequest;
+import com.fhirtransformer.dto.TenantUpdateRequest;
 import com.fhirtransformer.model.Tenant;
 import com.fhirtransformer.service.TenantService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/tenants")
@@ -19,44 +22,27 @@ public class TenantController {
         this.tenantService = tenantService;
     }
 
+    @GetMapping
+    public ResponseEntity<List<Tenant>> getAllTenants() {
+        return ResponseEntity.ok(tenantService.getAllTenants());
+    }
+
     @PostMapping("/onboard")
-    public ResponseEntity<?> onboardTenant(@RequestBody Map<String, String> request) {
-        try {
-            String tenantId = request.get("tenantId");
-            String password = request.get("password");
-            String name = request.get("name");
-
-            if (tenantId == null || password == null) {
-                return ResponseEntity.badRequest().body("Missing tenantId or password");
-            }
-
-            Tenant tenant = tenantService.onboardTenant(tenantId, password, name);
-            return ResponseEntity.ok(tenant);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        }
+    public ResponseEntity<Tenant> onboardTenant(@Valid @RequestBody TenantOnboardRequest request) {
+        Tenant tenant = tenantService.onboardTenant(request.getTenantId(), request.getPassword(), request.getName());
+        return ResponseEntity.ok(tenant);
     }
 
     @PutMapping("/{tenantId}")
-    public ResponseEntity<?> updateTenant(@PathVariable String tenantId, @RequestBody Map<String, String> request) {
-        try {
-            String password = request.get("password");
-            String name = request.get("name");
-
-            Tenant tenant = tenantService.updateTenant(tenantId, password, name);
-            return ResponseEntity.ok(tenant);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        }
+    public ResponseEntity<Tenant> updateTenant(@PathVariable String tenantId,
+            @Valid @RequestBody TenantUpdateRequest request) {
+        Tenant tenant = tenantService.updateTenant(tenantId, request.getPassword(), request.getName());
+        return ResponseEntity.ok(tenant);
     }
 
     @DeleteMapping("/{tenantId}")
-    public ResponseEntity<?> deleteTenant(@PathVariable String tenantId) {
-        try {
-            tenantService.deleteTenant(tenantId);
-            return ResponseEntity.ok("Tenant deleted successfully");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        }
+    public ResponseEntity<String> deleteTenant(@PathVariable String tenantId) {
+        tenantService.deleteTenant(tenantId);
+        return ResponseEntity.ok("Tenant deleted successfully");
     }
 }
