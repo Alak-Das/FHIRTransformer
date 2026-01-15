@@ -858,6 +858,64 @@
                     }
                 },
                 {
+                    "name": "Sync Bundle (Patient + Allergy)",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"syncAl1Id\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var textData = pm.response.text();",
+                                    "pm.test(\"Contains AL1 Segment\", function () {",
+                                    "    pm.expect(textData).to.include(\"AL1|1|DA|Z88.1^Penicillin\");",
+                                    "});",
+                                    "pm.test(\"Contains Reaction\", function () {",
+                                    "    pm.expect(textData).to.include(\"|Hives\");",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"id\": \"{{syncAl1Id}}\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"id\": \"pat-1\",\n        \"name\": [ { \"family\": \"SMITH\" } ]\n      }\n    },\n    {\n      \"resource\": {\n        \"resourceType\": \"AllergyIntolerance\",\n        \"clinicalStatus\": { \"coding\": [ { \"system\": \"http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical\", \"code\": \"active\" } ] },\n        \"verificationStatus\": { \"coding\": [ { \"system\": \"http://terminology.hl7.org/CodeSystem/allergyintolerance-verification\", \"code\": \"confirmed\" } ] },\n        \"category\": [ \"medication\" ],\n        \"code\": { \"coding\": [ { \"system\": \"http://hl7.org/fhir/sid/icd-10\", \"code\": \"Z88.1\", \"display\": \"Penicillin\" } ] },\n        \"patient\": { \"reference\": \"Patient/pat-1\" },\n        \"reaction\": [ { \"manifestation\": [ { \"text\": \"Hives\" } ] } ]\n      }\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/fhir-to-v2-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "fhir-to-v2-sync"
+                            ]
+                        }
+                    }
+                },
+                {
                     "name": "Sync Bundle (Patient + Condition)",
                     "event": [
                         {
