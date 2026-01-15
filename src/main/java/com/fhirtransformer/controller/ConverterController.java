@@ -8,8 +8,6 @@ import com.fhirtransformer.service.AuditService;
 import com.fhirtransformer.service.FhirToHl7Service;
 import com.fhirtransformer.service.Hl7ToFhirService;
 import com.fhirtransformer.service.MessageEnrichmentService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,8 +26,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/convert")
 public class ConverterController {
-
-    private static final Logger log = LoggerFactory.getLogger(ConverterController.class);
 
     private final Hl7ToFhirService hl7ToFhirService;
     private final FhirToHl7Service fhirToHl7Service;

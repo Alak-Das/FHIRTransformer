@@ -7,9 +7,15 @@ import ca.uhn.hl7v2.model.v25.message.ADT_A01;
 import ca.uhn.hl7v2.model.v25.segment.MSH;
 import ca.uhn.hl7v2.model.v25.segment.PID;
 import ca.uhn.hl7v2.model.v25.segment.PV1;
+import ca.uhn.hl7v2.model.v25.segment.OBX;
+import ca.uhn.hl7v2.model.v25.segment.DG1;
+import ca.uhn.hl7v2.model.v25.datatype.NM;
+import ca.uhn.hl7v2.model.v25.datatype.ST;
 import ca.uhn.hl7v2.parser.Parser;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Condition;
 import org.hl7.fhir.r4.model.Encounter;
+import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.springframework.stereotype.Service;
@@ -167,6 +173,98 @@ public class FhirToHl7Service {
                 }
             }
 
+            // Map Observations to OBX
+            int obxCount = 0;
+            for (Bundle.BundleEntryComponent entry : bundle.getEntry()) {
+                if (entry.getResource().getResourceType() == ResourceType.Observation) {
+                    Observation obs = (Observation) entry.getResource();
+                    // We need to retrieve the OBX repetition. HAPI V2 models usually have a method
+                    // to get specific repetition.
+                    // For typical ADT/ORU structures, OBX is repeating.
+                    // However, we are using ADT_A01 which technically allows OBX after other
+                    // segments in some versions, or as part of a group?
+                    // ADT_A01 in v2.5 has OBX.
+
+                    OBX obx = adt.getOBX(obxCount);
+
+                    // OBX-1 Set ID
+                    obx.getSetIDOBX().setValue(String.valueOf(obxCount + 1));
+
+                    // OBX-2 Value Type
+                    if (obs.hasValueQuantity()) {
+                        obx.getValueType().setValue("NM"); // Numeric
+                    } else {
+                        obx.getValueType().setValue("ST"); // String
+                    }
+
+                    // OBX-3 Observation Identifier
+                    if (obs.hasCode() && obs.getCode().hasCoding()) {
+                        obx.getObservationIdentifier().getIdentifier()
+                                .setValue(obs.getCode().getCodingFirstRep().getCode());
+                        obx.getObservationIdentifier().getText()
+                                .setValue(obs.getCode().getCodingFirstRep().getDisplay());
+                    }
+
+                    // OBX-5 Observation Value & OBX-6 Units
+                    if (obs.hasValueQuantity()) {
+                        NM nm = new NM(adt);
+                        nm.setValue(obs.getValueQuantity().getValue().toString());
+                        obx.getObservationValue(0).setData(nm);
+
+                        obx.getUnits().getIdentifier().setValue(obs.getValueQuantity().getUnit());
+                    } else if (obs.hasValueStringType()) {
+                        ST st = new ST(adt);
+                        st.setValue(obs.getValueStringType().getValue());
+                        obx.getObservationValue(0).setData(st);
+                    }
+
+                    // OBX-11 Status
+                    if (obs.hasStatus()) {
+                        switch (obs.getStatus()) {
+                            case FINAL:
+                                obx.getObservationResultStatus().setValue("F");
+                                break;
+                            case PRELIMINARY:
+                                obx.getObservationResultStatus().setValue("P");
+                                break;
+                            default:
+                                obx.getObservationResultStatus().setValue("C");
+                                break; // Corrected/Other
+                        }
+                    }
+
+                    obxCount++;
+                }
+            }
+
+            // Map Conditions to DG1
+            int dg1Count = 0;
+            for (Bundle.BundleEntryComponent entry : bundle.getEntry()) {
+                if (entry.getResource().getResourceType() == ResourceType.Condition) {
+                    Condition cond = (Condition) entry.getResource();
+
+                    DG1 dg1 = adt.getDG1(dg1Count);
+
+                    // DG1-1 Set ID
+                    dg1.getSetIDDG1().setValue(String.valueOf(dg1Count + 1));
+
+                    // DG1-3 Diagnosis Code
+                    if (cond.hasCode() && cond.getCode().hasCoding()) {
+                        dg1.getDiagnosisCodeDG1().getIdentifier()
+                                .setValue(cond.getCode().getCodingFirstRep().getCode());
+                        dg1.getDiagnosisCodeDG1().getText().setValue(cond.getCode().getCodingFirstRep().getDisplay());
+                        dg1.getDiagnosisCodeDG1().getNameOfCodingSystem().setValue("ICD-10");
+                    }
+
+                    // DG1-6 Diagnosis Type
+                    if (cond.hasCategory()) {
+                        dg1.getDiagnosisType().setValue(cond.getCategoryFirstRep().getCodingFirstRep().getDisplay());
+                    }
+
+                    dg1Count++;
+                }
+            }
+
             // Serialize to Pipe Delimited
             Parser parser = hl7Context.getPipeParser();
             String result = parser.encode(adt);
@@ -177,7 +275,9 @@ public class FhirToHl7Service {
 
             return result;
 
-        } catch (Exception e) {
+        } catch (
+
+        Exception e) {
             // Record Failure Metrics
             meterRegistry.counter("fhir.conversion.count", "type", "fhir-to-v2", "status", "error").increment();
             throw e;
