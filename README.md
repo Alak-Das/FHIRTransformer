@@ -11,8 +11,8 @@ A high-performance, secure, and multi-tenant integration service bridging **Lega
 ## 🚀 Key Features
 
 *   **Bi-Directional Conversion**:
-    *   **HL7 v2 -> FHIR R4**: Converts ADT (A01, A08) messages to FHIR Bundles including Patient, Encounter, Observations (OBX), Diagnoses (DG1), and Allergies (AL1).
-    *   **FHIR R4 -> HL7 v2**: Converts FHIR Bundles (Patient, Encounter, Observation, Condition, AllergyIntolerance) back to HL7 v2.5 ADT messages.
+    *   **HL7 v2 -> FHIR R4**: Converts ADT (A01, A03, A08) messages to FHIR Bundles including Patient (PID + Death), Encounter (Admit/Discharge + Reason), Observations (OBX + Status/Time), Diagnoses (DG1), Allergies (AL1 + Severity), Insurance (IN1), Guarantor (GT1), Procedures (PR1), Next of Kin (NK1), and Clinical Notes (NTE).
+    *   **FHIR R4 -> HL7 v2**: Converts FHIR Bundles (Patient, Encounter, Observation, Condition, AllergyIntolerance, Coverage, RelatedPerson, Procedure) back to HL7 v2.5 ADT messages, including Patient Contacts mapping to NK1 and Guarantors to GT1.
 *   **Multi-Tenancy**: Dynamic tenant onboarding with isolated credentials and Role-Based Access Control (RBAC).
 *   **Event-Driven Architecture**: Fully asynchronous processing pipeline using RabbitMQ.
 *   **Enterprise Security**:

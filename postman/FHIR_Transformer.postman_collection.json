@@ -561,6 +561,7 @@
                                     "    pm.expect(allergy).to.not.be.undefined;",
                                     "    pm.expect(allergy.resource.code.coding[0].code).to.eql('Z88.1');",
                                     "    pm.expect(allergy.resource.category[0]).to.eql('medication');",
+                                    "    pm.expect(allergy.resource.reaction[0].severity).to.eql('moderate');",
                                     "});"
                                 ],
                                 "type": "text/javascript"
@@ -594,6 +595,80 @@
                         "body": {
                             "mode": "raw",
                             "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01|{{syncAl1Id}}|P|2.5\rPID|1||103||CONDORN^JANE\rAL1|1|DA|Z88.1^Penicillin^CD|MO|Hives"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "v2-to-fhir-sync"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Sync ADT^A01 (Patient + Observation)",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"syncObxId\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Contains Observation with Date\", function () {",
+                                    "    var obx = jsonData.entry.find(e => e.resource.resourceType === 'Observation');",
+                                    "    pm.expect(obx).to.not.be.undefined;",
+                                    "    pm.expect(obx.resource.code.coding[0].code).to.eql('8867-4');",
+                                    "    pm.expect(obx.resource.status).to.eql('final');",
+                                    "    pm.expect(obx.resource.effectiveDateTime).to.include('2023-01-01');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password123",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "tenant1",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "text/plain",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01|{{syncObxId}}|P|2.5\rPID|1||103||CONDORN^JANE\rOBX|1|NM|8867-4^Heart rate^LN||80|/min|||||F|||202301011200"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
@@ -959,6 +1034,241 @@
                         "body": {
                             "mode": "raw",
                             "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"id\": \"{{syncDg1Id}}\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"id\": \"pat-1\",\n        \"identifier\": [ { \"value\": \"12345\" } ],\n        \"name\": [ { \"family\": \"SMITH\", \"given\": [\"JOHN\"] } ],\n        \"gender\": \"male\"\n      }\n    },\n    {\n      \"resource\": {\n        \"resourceType\": \"Condition\",\n        \"code\": { \"coding\": [ { \"system\": \"http://hl7.org/fhir/sid/icd-10\", \"code\": \"E11.9\", \"display\": \"Type 2 diabetes mellitus without complications\" } ] },\n        \"subject\": { \"reference\": \"Patient/pat-1\" },\n        \"category\": [ { \"coding\": [ { \"system\": \"http://terminology.hl7.org/CodeSystem/condition-category\", \"code\": \"encounter-diagnosis\", \"display\": \"Admitting Diagnosis\" } ] } ]\n      }\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/fhir-to-v2-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "fhir-to-v2-sync"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Sync Bundle (Patient + NK1)",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"syncNk1Id\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var textData = pm.response.text();",
+                                    "pm.test(\"Contains NK1 Segment\", function () {",
+                                    "    pm.expect(textData).to.include(\"NK1|1|DOE^JANE\");",
+                                    "});",
+                                    "pm.test(\"Contains Relationship\", function () {",
+                                    "    pm.expect(textData).to.include(\"|MTH^Mother\");",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"id\": \"{{syncNk1Id}}\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"id\": \"pat-1\",\n        \"name\": [ { \"family\": \"SMITH\" } ],\n        \"contact\": [\n          {\n            \"relationship\": [ { \"coding\": [ { \"system\": \"http://terminology.hl7.org/CodeSystem/v2-0063\", \"code\": \"MTH\", \"display\": \"Mother\" } ] } ],\n            \"name\": { \"family\": \"DOE\", \"given\": [ \"JANE\" ] },\n            \"telecom\": [ { \"system\": \"phone\", \"value\": \"555-555-5555\" } ]\n          }\n        ]\n      }\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/fhir-to-v2-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "fhir-to-v2-sync"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Sync Bundle (Patient + Coverage)",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"syncIn1Id\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var textData = pm.response.text();",
+                                    "pm.test(\"Contains IN1 Segment\", function () {",
+                                    "    pm.expect(textData).to.include(\"IN1|1||org-1|BlueCross\");",
+                                    "});",
+                                    "pm.test(\"Contains Policy Number\", function () {",
+                                    "    pm.expect(textData).to.include(\"|POL-999\");",
+                                    "});",
+                                    "pm.test(\"Contains Plan Type\", function () {",
+                                    "    pm.expect(textData).to.include(\"P1001\");",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"id\": \"{{syncIn1Id}}\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"id\": \"pat-1\",\n        \"name\": [ { \"family\": \"SMITH\" } ]\n      }\n    },\n    {\n      \"resource\": {\n        \"resourceType\": \"Coverage\",\n        \"status\": \"active\",\n        \"subscriberId\": \"POL-999\",\n        \"payor\": [ { \"reference\": \"Organization/org-1\", \"display\": \"BlueCross\" } ],\n        \"beneficiary\": { \"reference\": \"Patient/pat-1\" },\n        \"type\": { \"coding\": [ { \"system\": \"http://terminology.hl7.org/CodeSystem/v3-ActCode\", \"code\": \"P1001\" } ] }\n      }\n    },\n    {\n      \"resource\": {\n        \"resourceType\": \"Organization\",\n        \"id\": \"org-1\",\n        \"name\": \"BlueCross\",\n        \"identifier\": [ { \"value\": \"45678\" } ]\n      }\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/fhir-to-v2-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "fhir-to-v2-sync"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Sync Bundle (Patient + Procedure)",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"syncPr1Id\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var textData = pm.response.text();",
+                                    "pm.test(\"Contains PR1 Segment\", function () {",
+                                    "    pm.expect(textData).to.include(\"PR1|1||80.1^Appendectomy\");",
+                                    "});",
+                                    "pm.test(\"Contains Date\", function () {",
+                                    "    pm.expect(textData).to.include(\"202301011200\");",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"id\": \"{{syncPr1Id}}\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"id\": \"pat-1\",\n        \"name\": [ { \"family\": \"SMITH\" } ]\n      }\n    },\n    {\n      \"resource\": {\n        \"resourceType\": \"Procedure\",\n        \"status\": \"completed\",\n        \"subject\": { \"reference\": \"Patient/pat-1\" },\n        \"code\": { \"coding\": [ { \"system\": \"http://www.ama-assn.org/go/cpt\", \"code\": \"80.1\", \"display\": \"Appendectomy\" } ] },\n        \"performedDateTime\": \"2023-01-01T12:00:00Z\"\n      }\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/fhir-to-v2-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "fhir-to-v2-sync"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Sync Bundle (Patient + Guarantor)",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"syncGt1Id\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var textData = pm.response.text();",
+                                    "pm.test(\"Contains GT1 Segment\", function () {",
+                                    "    pm.expect(textData).to.include(\"GT1|1||SMITH^JOHN\");",
+                                    "});",
+                                    "pm.test(\"Contains Relationship\", function () {",
+                                    "    pm.expect(textData).to.include(\"|GT\");",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"id\": \"{{syncGt1Id}}\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"id\": \"pat-1\",\n        \"name\": [ { \"family\": \"SMITH\" } ]\n      }\n    },\n    {\n      \"resource\": {\n        \"resourceType\": \"RelatedPerson\",\n        \"patient\": { \"reference\": \"Patient/pat-1\" },\n        \"name\": [ { \"family\": \"SMITH\", \"given\": [ \"JOHN\" ] } ],\n        \"relationship\": [ { \"coding\": [ { \"system\": \"http://terminology.hl7.org/CodeSystem/v2-0063\", \"code\": \"GT\" } ] } ]\n      }\n    }\n  ]\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/convert/fhir-to-v2-sync",
