@@ -52,11 +52,11 @@ public class ConverterController {
 
     @Autowired
     public ConverterController(Hl7ToFhirService hl7ToFhirService,
-                               FhirToHl7Service fhirToHl7Service,
-                               RabbitTemplate rabbitTemplate,
-                               MessageEnrichmentService messageEnrichmentService,
-                               AuditService auditService,
-                               ObjectMapper objectMapper) {
+            FhirToHl7Service fhirToHl7Service,
+            RabbitTemplate rabbitTemplate,
+            MessageEnrichmentService messageEnrichmentService,
+            AuditService auditService,
+            ObjectMapper objectMapper) {
         this.hl7ToFhirService = hl7ToFhirService;
         this.fhirToHl7Service = fhirToHl7Service;
         this.rabbitTemplate = rabbitTemplate;
@@ -66,92 +66,64 @@ public class ConverterController {
     }
 
     @PostMapping(value = "/v2-to-fhir", consumes = MediaType.TEXT_PLAIN_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> convertToFhir(@RequestBody String hl7Message, Principal principal) {
-        String transactionId = null;
-        try {
-            EnrichedMessage enriched = messageEnrichmentService.ensureHl7TransactionId(hl7Message);
-            transactionId = enriched.getTransactionId();
-            String processedMessage = enriched.getContent();
+    public ResponseEntity<String> convertToFhir(@RequestBody String hl7Message, Principal principal) throws Exception {
+        EnrichedMessage enriched = messageEnrichmentService.ensureHl7TransactionId(hl7Message);
+        String transactionId = enriched.getTransactionId();
+        String processedMessage = enriched.getContent();
 
-            auditService.logTransaction(getTenantId(principal), transactionId,
-                    MessageType.V2_TO_FHIR_ASYNC, TransactionStatus.ACCEPTED);
+        auditService.logTransaction(getTenantId(principal), transactionId,
+                MessageType.V2_TO_FHIR_ASYNC, TransactionStatus.ACCEPTED);
 
-            rabbitTemplate.convertAndSend(exchange, routingKey, processedMessage);
+        rabbitTemplate.convertAndSend(exchange, routingKey, processedMessage);
 
-            return createAcceptedResponse(transactionId);
-        } catch (Exception e) {
-            handleError(getTenantId(principal), transactionId, MessageType.V2_TO_FHIR_ASYNC, e);
-            return createErrorResponse(e.getMessage());
-        }
+        return createAcceptedResponse(transactionId);
     }
 
     @PostMapping(value = "/v2-to-fhir-sync", consumes = MediaType.TEXT_PLAIN_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> convertToFhirSync(@RequestBody String hl7Message, Principal principal) {
-        String transactionId = null;
-        try {
-            EnrichedMessage enriched = messageEnrichmentService.ensureHl7TransactionId(hl7Message);
-            transactionId = enriched.getTransactionId();
-            String processedMessage = enriched.getContent();
+    public ResponseEntity<String> convertToFhirSync(@RequestBody String hl7Message, Principal principal)
+            throws Exception {
+        EnrichedMessage enriched = messageEnrichmentService.ensureHl7TransactionId(hl7Message);
+        String transactionId = enriched.getTransactionId();
+        String processedMessage = enriched.getContent();
 
-            String fhirJson = hl7ToFhirService.convertHl7ToFhir(processedMessage);
+        String fhirJson = hl7ToFhirService.convertHl7ToFhir(processedMessage);
 
-            auditService.logTransaction(getTenantId(principal), transactionId,
-                    MessageType.V2_TO_FHIR_SYNC, TransactionStatus.COMPLETED);
+        auditService.logTransaction(getTenantId(principal), transactionId,
+                MessageType.V2_TO_FHIR_SYNC, TransactionStatus.COMPLETED);
 
-            return ResponseEntity.ok(fhirJson);
-        } catch (Exception e) {
-            handleError(getTenantId(principal), transactionId, MessageType.V2_TO_FHIR_SYNC, e);
-            return createErrorResponse(e.getMessage());
-        }
+        return ResponseEntity.ok(fhirJson);
     }
 
     @PostMapping(value = "/fhir-to-v2", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> convertToHl7(@RequestBody String fhirJson, Principal principal) {
-        String transactionId = null;
-        try {
-            EnrichedMessage enriched = messageEnrichmentService.ensureFhirTransactionId(fhirJson);
-            transactionId = enriched.getTransactionId();
-            String processedJson = enriched.getContent();
+    public ResponseEntity<String> convertToHl7(@RequestBody String fhirJson, Principal principal) throws Exception {
+        EnrichedMessage enriched = messageEnrichmentService.ensureFhirTransactionId(fhirJson);
+        String transactionId = enriched.getTransactionId();
+        String processedJson = enriched.getContent();
 
-            auditService.logTransaction(getTenantId(principal), transactionId,
-                    MessageType.FHIR_TO_V2_ASYNC, TransactionStatus.QUEUED);
+        auditService.logTransaction(getTenantId(principal), transactionId,
+                MessageType.FHIR_TO_V2_ASYNC, TransactionStatus.QUEUED);
 
-            rabbitTemplate.convertAndSend(fhirExchange, fhirRoutingKey, processedJson);
+        rabbitTemplate.convertAndSend(fhirExchange, fhirRoutingKey, processedJson);
 
-            return createAcceptedResponse(transactionId);
-        } catch (Exception e) {
-            handleError(getTenantId(principal), transactionId, MessageType.FHIR_TO_V2_ASYNC, e);
-            return createErrorResponse(e.getMessage());
-        }
+        return createAcceptedResponse(transactionId);
     }
 
     @PostMapping(value = "/fhir-to-v2-sync", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.TEXT_PLAIN_VALUE)
-    public ResponseEntity<String> convertToHl7Sync(@RequestBody String fhirJson, Principal principal) {
-        String transactionId = null;
-        try {
-            EnrichedMessage enriched = messageEnrichmentService.ensureFhirTransactionId(fhirJson);
-            transactionId = enriched.getTransactionId();
-            String processedJson = enriched.getContent();
+    public ResponseEntity<String> convertToHl7Sync(@RequestBody String fhirJson, Principal principal) throws Exception {
+        EnrichedMessage enriched = messageEnrichmentService.ensureFhirTransactionId(fhirJson);
+        String transactionId = enriched.getTransactionId();
+        String processedJson = enriched.getContent();
 
-            String hl7Message = fhirToHl7Service.convertFhirToHl7(processedJson);
+        String hl7Message = fhirToHl7Service.convertFhirToHl7(processedJson);
 
-            auditService.logTransaction(getTenantId(principal), transactionId,
-                    MessageType.FHIR_TO_V2_SYNC, TransactionStatus.COMPLETED);
+        auditService.logTransaction(getTenantId(principal), transactionId,
+                MessageType.FHIR_TO_V2_SYNC, TransactionStatus.COMPLETED);
 
-            return ResponseEntity.ok(hl7Message);
-        } catch (Exception e) {
-            handleError(getTenantId(principal), transactionId, MessageType.FHIR_TO_V2_SYNC, e);
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        }
+        return ResponseEntity.ok(hl7Message);
     }
 
     private String getTenantId(Principal principal) {
         return principal != null ? principal.getName() : "UNKNOWN";
-    }
-
-    private void handleError(String tenantId, String transactionId, MessageType type, Exception e) {
-        log.error("Error processing transaction {}: {}", transactionId, e.getMessage());
-        auditService.logTransaction(tenantId, transactionId, type, TransactionStatus.FAILED);
     }
 
     private ResponseEntity<String> createAcceptedResponse(String transactionId) throws Exception {
@@ -160,16 +132,5 @@ public class ConverterController {
         response.put("message", "Processing asynchronously");
         response.put("transactionId", transactionId);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(objectMapper.writeValueAsString(response));
-    }
-
-    private ResponseEntity<String> createErrorResponse(String errorMessage) {
-        try {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to process message");
-            error.put("details", errorMessage);
-            return ResponseEntity.badRequest().body(objectMapper.writeValueAsString(error));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("{\"error\": \"Internal handling error\"}");
-        }
     }
 }
