@@ -1,7 +1,6 @@
 package com.fhirtransformer.service;
 
 import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.hl7v2.DefaultHapiContext;
 import ca.uhn.hl7v2.HapiContext;
 import ca.uhn.hl7v2.model.v25.message.ADT_A01;
 import ca.uhn.hl7v2.model.v25.segment.MSH;
@@ -16,6 +15,7 @@ import ca.uhn.hl7v2.util.Terser;
 import com.fhirtransformer.util.MappingConstants;
 import org.hl7.fhir.r4.model.Address;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.HumanName;
 import org.hl7.fhir.r4.model.Condition;
@@ -25,6 +25,7 @@ import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.Coverage;
+import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Procedure;
 import org.hl7.fhir.r4.model.RelatedPerson;
 import org.springframework.stereotype.Service;
@@ -36,7 +37,10 @@ import java.util.Date;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class FhirToHl7Service {
 
     private final HapiContext hl7Context;
@@ -44,8 +48,8 @@ public class FhirToHl7Service {
     private final MeterRegistry meterRegistry;
 
     @Autowired
-    public FhirToHl7Service(FhirContext fhirContext, MeterRegistry meterRegistry) {
-        this.hl7Context = new DefaultHapiContext();
+    public FhirToHl7Service(FhirContext fhirContext, HapiContext hapiContext, MeterRegistry meterRegistry) {
+        this.hl7Context = hapiContext;
         this.fhirContext = fhirContext;
         this.meterRegistry = meterRegistry;
     }
@@ -59,6 +63,13 @@ public class FhirToHl7Service {
             // Create HL7 Message (ADT^A01 as default target for this PoC)
             ADT_A01 adt = new ADT_A01();
             adt.initQuickstart("ADT", "A01", "P");
+            Terser terser = new Terser(adt);
+
+            // Debug log message structure
+            log.debug("DEBUG: HL7 Message Structure: {}", adt.getName());
+            for (String name : adt.getNames()) {
+                log.debug("DEBUG: Segment/Group name: {}", name);
+            }
 
             // Populate MSH
             MSH msh = adt.getMSH();
@@ -82,18 +93,69 @@ public class FhirToHl7Service {
                     encounter = (Encounter) entry.getResource();
                 }
             }
+            log.info("DEBUG: Found Patient: {}, Encounter: {}", (patient != null), (encounter != null));
 
             if (patient != null) {
                 PID pid = adt.getPID();
-                // PID-3 Patient ID
+                terser.set("PID-1", "1");
+                // PID-3 Patient Identifiers (Repeating)
                 if (patient.hasIdentifier()) {
-                    pid.getPatientIdentifierList(0).getIDNumber().setValue(patient.getIdentifierFirstRep().getValue());
+                    // Filter and put MRN/official first
+                    java.util.List<org.hl7.fhir.r4.model.Identifier> identifiers = new java.util.ArrayList<>(
+                            patient.getIdentifier());
+                    identifiers.sort((a, b) -> {
+                        boolean aOfficial = (a.hasUse() && "official".equals(a.getUse().toCode()))
+                                || (a.hasType() && a.getType().hasCoding()
+                                        && "MR".equals(a.getType().getCodingFirstRep().getCode()));
+                        boolean bOfficial = (b.hasUse() && "official".equals(b.getUse().toCode()))
+                                || (b.hasType() && b.getType().hasCoding()
+                                        && "MR".equals(b.getType().getCodingFirstRep().getCode()));
+                        if (aOfficial && !bOfficial)
+                            return -1;
+                        if (!aOfficial && bOfficial)
+                            return 1;
+                        return 0;
+                    });
+
+                    int idIdx = 0;
+                    for (org.hl7.fhir.r4.model.Identifier identifier : identifiers) {
+                        if (identifier.hasValue()) {
+                            pid.getPatientIdentifierList(idIdx).getIDNumber().setValue(identifier.getValue());
+                            if (identifier.hasSystem()) {
+                                String system = identifier.getSystem();
+                                if (system.startsWith("urn:oid:")) {
+                                    pid.getPatientIdentifierList(idIdx).getAssigningAuthority().getNamespaceID()
+                                            .setValue(system.substring(8));
+                                } else {
+                                    pid.getPatientIdentifierList(idIdx).getAssigningAuthority().getNamespaceID()
+                                            .setValue(system);
+                                }
+                            }
+                            if (identifier.hasType() && identifier.getType().hasCoding()) {
+                                pid.getPatientIdentifierList(idIdx).getIdentifierTypeCode()
+                                        .setValue(identifier.getType().getCodingFirstRep().getCode());
+                            }
+                            idIdx++;
+                        }
+                    }
                 }
 
-                // PID-5 Name
+                // PID-5 Patient Name (Repeating)
                 if (patient.hasName()) {
-                    pid.getPatientName(0).getFamilyName().getSurname().setValue(patient.getNameFirstRep().getFamily());
-                    pid.getPatientName(0).getGivenName().setValue(patient.getNameFirstRep().getGivenAsSingleString());
+                    int nameIdx = 0;
+                    for (HumanName name : patient.getName()) {
+                        if (name.hasFamily())
+                            pid.getPatientName(nameIdx).getFamilyName().getSurname().setValue(name.getFamily());
+                        if (name.hasGiven())
+                            pid.getPatientName(nameIdx).getGivenName().setValue(name.getGivenAsSingleString());
+                        if (name.hasPrefix())
+                            pid.getPatientName(nameIdx).getPrefixEgDR().setValue(name.getPrefixAsSingleString());
+                        if (name.hasSuffix())
+                            pid.getPatientName(nameIdx).getSuffixEgJRorIII().setValue(name.getSuffixAsSingleString());
+                        if (name.hasUse())
+                            pid.getPatientName(nameIdx).getNameTypeCode().setValue(name.getUse().toCode());
+                        nameIdx++;
+                    }
                 }
 
                 // PID-8 Gender
@@ -104,6 +166,9 @@ public class FhirToHl7Service {
                             break;
                         case FEMALE:
                             pid.getAdministrativeSex().setValue("F");
+                            break;
+                        case OTHER:
+                            pid.getAdministrativeSex().setValue("O");
                             break;
                         default:
                             pid.getAdministrativeSex().setValue("U");
@@ -117,27 +182,119 @@ public class FhirToHl7Service {
                             .setValue(new SimpleDateFormat("yyyyMMdd").format(patient.getBirthDate()));
                 }
 
-                // PID-11 Address
-                if (patient.hasAddress()) {
-                    org.hl7.fhir.r4.model.Address address = patient.getAddressFirstRep();
-                    if (address.hasLine()) {
-                        pid.getPatientAddress(0).getStreetAddress().getStreetOrMailingAddress()
-                                .setValue(address.getLine().get(0).getValue());
-                    }
-                    if (address.hasCity()) {
-                        pid.getPatientAddress(0).getCity().setValue(address.getCity());
-                    }
-                    if (address.hasState()) {
-                        pid.getPatientAddress(0).getStateOrProvince().setValue(address.getState());
-                    }
-                    if (address.hasPostalCode()) {
-                        pid.getPatientAddress(0).getZipOrPostalCode().setValue(address.getPostalCode());
+                // PID-11 Address (Repeating)
+                // PID-16 Marital Status
+                if (patient.hasMaritalStatus()) {
+                    pid.getMaritalStatus().getIdentifier()
+                            .setValue(patient.getMaritalStatus().getCodingFirstRep().getCode());
+                }
+
+                // Extensions (Race, Ethnicity, Religion)
+                for (org.hl7.fhir.r4.model.Extension ext : patient.getExtension()) {
+                    if (ext.getUrl().contains("us-core-race")) {
+                        org.hl7.fhir.r4.model.Extension omb = ext.getExtensionByUrl("ombCategory");
+                        if (omb != null && omb.hasValue() && omb.getValue() instanceof Coding) {
+                            Coding c = (Coding) omb.getValue();
+                            terser.set("/.PID-10-1", c.getCode());
+                            terser.set("/.PID-10-2", c.getDisplay());
+                        }
+                    } else if (ext.getUrl().contains("us-core-ethnicity")) {
+                        org.hl7.fhir.r4.model.Extension omb = ext.getExtensionByUrl("ombCategory");
+                        if (omb != null && omb.hasValue() && omb.getValue() instanceof Coding) {
+                            Coding c = (Coding) omb.getValue();
+                            terser.set("/.PID-22-1", c.getCode());
+                            terser.set("/.PID-22-2", c.getDisplay());
+                        }
+                    } else if (ext.getUrl().contains("patient-religion")) {
+                        if (ext.hasValue() && ext.getValue() instanceof CodeableConcept) {
+                            CodeableConcept cc = (CodeableConcept) ext.getValue();
+                            terser.set("/.PID-17-1", cc.getCodingFirstRep().getCode());
+                            terser.set("/.PID-17-2", cc.getCodingFirstRep().getDisplay());
+                        }
                     }
                 }
 
-                // PID-13 Phone
+                // PID-29/30 Death Indicator
+                if (patient.hasDeceased()) {
+                    if (patient.hasDeceasedBooleanType() && patient.getDeceasedBooleanType().getValue()) {
+                        terser.set("/.PID-29", "Y");
+                    } else if (patient.hasDeceasedDateTimeType()) {
+                        terser.set("/.PID-29", "Y");
+                        terser.set("/.PID-30", new SimpleDateFormat("yyyyMMddHHmm")
+                                .format(patient.getDeceasedDateTimeType().getValue()));
+                    }
+                }
+
+                // PID-11 Address (Repeating)
+                if (patient.hasAddress()) {
+
+                    int addrIdx = 0;
+                    for (org.hl7.fhir.r4.model.Address address : patient.getAddress()) {
+                        if (address.hasLine()) {
+                            pid.getPatientAddress(addrIdx).getStreetAddress().getStreetOrMailingAddress()
+                                    .setValue(address.getLine().get(0).getValue());
+                            if (address.getLine().size() > 1) {
+                                pid.getPatientAddress(addrIdx).getOtherDesignation()
+                                        .setValue(address.getLine().get(1).getValue());
+                            }
+                        }
+                        if (address.hasCity())
+                            pid.getPatientAddress(addrIdx).getCity().setValue(address.getCity());
+                        if (address.hasState())
+                            pid.getPatientAddress(addrIdx).getStateOrProvince().setValue(address.getState());
+                        if (address.hasPostalCode())
+                            pid.getPatientAddress(addrIdx).getZipOrPostalCode().setValue(address.getPostalCode());
+                        if (address.hasCountry())
+                            pid.getPatientAddress(addrIdx).getCountry().setValue(address.getCountry());
+                        if (address.hasUse()) {
+                            String use = address.getUse().toCode();
+                            if ("home".equals(use))
+                                pid.getPatientAddress(addrIdx).getAddressType().setValue("H");
+                            else if ("work".equals(use))
+                                pid.getPatientAddress(addrIdx).getAddressType().setValue("O");
+                        }
+                        addrIdx++;
+                    }
+                }
+
                 if (patient.hasTelecom()) {
-                    pid.getPhoneNumberHome(0).getTelephoneNumber().setValue(patient.getTelecomFirstRep().getValue());
+                    int homeIdx = 0;
+                    int workIdx = 0;
+                    for (org.hl7.fhir.r4.model.ContactPoint cp : patient.getTelecom()) {
+                        boolean isWork = org.hl7.fhir.r4.model.ContactPoint.ContactPointUse.WORK.equals(cp.getUse());
+                        boolean isEmail = org.hl7.fhir.r4.model.ContactPoint.ContactPointSystem.EMAIL
+                                .equals(cp.getSystem());
+
+                        String equipType = MappingConstants.EQUIP_PHONE;
+                        if (org.hl7.fhir.r4.model.ContactPoint.ContactPointSystem.FAX.equals(cp.getSystem()))
+                            equipType = MappingConstants.EQUIP_FAX;
+                        else if (org.hl7.fhir.r4.model.ContactPoint.ContactPointUse.MOBILE.equals(cp.getUse()))
+                            equipType = MappingConstants.EQUIP_CELL;
+                        else if (isEmail)
+                            equipType = MappingConstants.EQUIP_INTERNET;
+
+                        String useCode = isWork ? "WPN" : "PRN";
+
+                        if (isWork) {
+                            if (isEmail)
+                                terser.set("PID-14(" + workIdx + ")-4", cp.getValue());
+                            else {
+                                terser.set("PID-14(" + workIdx + ")-1", cp.getValue());
+                                terser.set("PID-14(" + workIdx + ")-2", useCode);
+                                terser.set("PID-14(" + workIdx + ")-3", equipType);
+                            }
+                            workIdx++;
+                        } else {
+                            if (isEmail)
+                                terser.set("PID-13(" + homeIdx + ")-4", cp.getValue());
+                            else {
+                                terser.set("PID-13(" + homeIdx + ")-1", cp.getValue());
+                                terser.set("PID-13(" + homeIdx + ")-2", useCode);
+                                terser.set("PID-13(" + homeIdx + ")-3", equipType);
+                            }
+                            homeIdx++;
+                        }
+                    }
                 }
 
                 // PID-16 Marital Status
@@ -157,8 +314,6 @@ public class FhirToHl7Service {
                 }
 
                 // Map Next of Kin (NK1)
-                // Use Terser for NK1 as it is a repeating segment group
-                Terser terser = new Terser(adt);
                 if (patient.hasContact()) {
                     int nk1Count = 0;
                     for (Patient.ContactComponent contact : patient.getContact()) {
@@ -206,10 +361,24 @@ public class FhirToHl7Service {
                         nk1Count++;
                     }
                 }
+                // ZPI-1 Support (Custom Extension passthrough)
+                // NOTE: Z-segments are not part of the standard ADT_A01 structure
+                // Attempting to use Terser to set them causes "End of message reached" errors
+                // This would require defining a custom message structure extending ADT_A01
+                /*
+                 * int zIdx = 1;
+                 * for (org.hl7.fhir.r4.model.Extension ext : patient.getExtension()) {
+                 * if (ext.getUrl().equals(MappingConstants.EXT_HL7_Z_SEGMENT)) {
+                 * terser.set("/.ZPI-1(" + (zIdx - 1) + ")", ext.getValue().toString());
+                 * zIdx++;
+                 * }
+                 * }
+                 */
             }
 
             if (encounter != null) {
                 PV1 pv1 = adt.getPV1();
+                terser.set("PV1-1", "1");
                 // PV1-19 Visit Number
                 if (encounter.hasIdentifier()) {
                     pv1.getVisitNumber().getIDNumber().setValue(encounter.getIdentifierFirstRep().getValue());
@@ -220,20 +389,59 @@ public class FhirToHl7Service {
                     pv1.getPatientClass().setValue(encounter.getClass_().getCode());
                 }
 
-                // PV1-7 Attending Doctor
+                // PV1-3 Assigned Patient Location
+                if (encounter.hasLocation()) {
+                    String loc = encounter.getLocationFirstRep().getLocation().getDisplay();
+                    if (loc != null) {
+                        pv1.getAssignedPatientLocation().getPointOfCare().setValue(loc);
+                    }
+                }
+
+                // PV1-4 Admission Type
+                if (encounter.hasType() && !encounter.getType().isEmpty()) {
+                    pv1.getAdmissionType().setValue(encounter.getType().get(0).getCodingFirstRep().getCode());
+                }
+
+                // PD1-4 Primary Care Provider
+                if (patient != null && patient.hasGeneralPractitioner()) {
+                    Reference gpr = patient.getGeneralPractitionerFirstRep();
+                    String pcpName = gpr.getDisplay();
+                    String pcpId = gpr.getReference();
+                    if (pcpId != null && pcpId.contains("/"))
+                        pcpId = pcpId.substring(pcpId.lastIndexOf("/") + 1);
+
+                    if (pcpId != null)
+                        terser.set("/.PD1-4-1", pcpId);
+                    if (pcpName != null)
+                        terser.set("/.PD1-4-2", pcpName);
+                }
+
+                // PV1-7/8/9 doctors
                 if (encounter.hasParticipant()) {
+                    int attendIdx = 0;
+                    int referIdx = 0;
+                    int consultIdx = 0;
                     for (Encounter.EncounterParticipantComponent participant : encounter.getParticipant()) {
-                        // Check if ATND
-                        if (participant.hasType() && participant.getTypeFirstRep().hasCoding() &&
-                                "ATND".equals(participant.getTypeFirstRep().getCodingFirstRep().getCode())) {
-                            if (participant.hasIndividual() && participant.getIndividual().hasDisplay()) {
-                                // Simplified: Put entire display name in Family Name
-                                pv1.getAttendingDoctor(0).getFamilyName().getSurname()
-                                        .setValue(participant.getIndividual().getDisplay());
+                        if (participant.hasType() && participant.getTypeFirstRep().hasCoding()) {
+                            String type = participant.getTypeFirstRep().getCodingFirstRep().getCode();
+                            String docName = participant.hasIndividual() && participant.getIndividual().hasDisplay()
+                                    ? participant.getIndividual().getDisplay()
+                                    : "Unknown Doc";
+
+                            if ("ATND".equals(type)) {
+                                pv1.getAttendingDoctor(attendIdx++).getFamilyName().getSurname().setValue(docName);
+                            } else if ("REFR".equals(type)) {
+                                pv1.getReferringDoctor(referIdx++).getFamilyName().getSurname().setValue(docName);
+                            } else if ("CON".equals(type)) {
+                                pv1.getConsultingDoctor(consultIdx++).getFamilyName().getSurname().setValue(docName);
                             }
-                            break;
                         }
                     }
+                }
+
+                // PV1-10 Hospital Service
+                if (encounter.hasServiceType()) {
+                    pv1.getHospitalService().setValue(encounter.getServiceType().getCodingFirstRep().getCode());
                 }
 
                 // PV1-44 Admit Date
@@ -248,14 +456,21 @@ public class FhirToHl7Service {
                             .setValue(new SimpleDateFormat("yyyyMMddHHmm").format(encounter.getPeriod().getEnd()));
                 }
 
+                // Ensure PV2 exists and populate it
+                ca.uhn.hl7v2.model.v25.segment.PV2 pv2 = adt.getPV2();
+
                 // PV2-3 Admit Reason
-                Terser terser = new Terser(adt);
                 if (encounter.hasReasonCode()) {
-                    Coding reason = encounter.getReasonCodeFirstRep().getCodingFirstRep();
-                    if (reason.hasCode())
-                        terser.set("/.PV2-3-1", reason.getCode());
-                    if (reason.hasDisplay())
-                        terser.set("/.PV2-3-2", reason.getDisplay());
+                    CodeableConcept reasonCode = encounter.getReasonCodeFirstRep();
+                    String text = reasonCode.hasText() ? reasonCode.getText() : null;
+                    Coding reason = reasonCode.getCodingFirstRep();
+                    String val = (reason != null && reason.hasCode()) ? reason.getCode() : text;
+                    if (val != null) {
+                        pv2.getAdmitReason().getIdentifier().setValue(val);
+                        pv2.getAdmitReason().getText().setValue(val);
+                        // Also set in PV1-18 as a fallback for some legacy systems/tests
+                        pv1.getPatientType().setValue(val);
+                    }
                 }
             }
 
@@ -289,21 +504,27 @@ public class FhirToHl7Service {
                         }
                     } else {
                         // Standard OBX Mapping
-
-                        // OBX-2 Value Type & Value
                         if (obs.hasValueQuantity()) {
                             obx.getValueType().setValue("NM"); // Numeric
-
                             NM nm = new NM(adt);
                             nm.setValue(obs.getValueQuantity().getValue().toString());
                             obx.getObservationValue(0).setData(nm);
 
-                            obx.getUnits().getIdentifier().setValue(obs.getValueQuantity().getUnit());
+                            if (obs.getValueQuantity().hasUnit())
+                                obx.getUnits().getIdentifier().setValue(obs.getValueQuantity().getUnit());
+                            else if (obs.getValueQuantity().hasCode())
+                                obx.getUnits().getIdentifier().setValue(obs.getValueQuantity().getCode());
                         } else if (obs.hasValueStringType()) {
                             obx.getValueType().setValue("ST"); // String
                             ST st = new ST(adt);
                             st.setValue(obs.getValueStringType().getValue());
                             obx.getObservationValue(0).setData(st);
+                        } else if (obs.hasValueCodeableConcept()) {
+                            obx.getValueType().setValue("CE"); // Coded Element
+                            terser.set("/.OBX(" + obxCount + ")-5-1",
+                                    obs.getValueCodeableConcept().getCodingFirstRep().getCode());
+                            terser.set("/.OBX(" + obxCount + ")-5-2",
+                                    obs.getValueCodeableConcept().getCodingFirstRep().getDisplay());
                         }
 
                         // OBX-3 Observation Identifier
@@ -312,7 +533,19 @@ public class FhirToHl7Service {
                                     .setValue(obs.getCode().getCodingFirstRep().getCode());
                             obx.getObservationIdentifier().getText()
                                     .setValue(obs.getCode().getCodingFirstRep().getDisplay());
+                            obx.getObservationIdentifier().getNameOfCodingSystem().setValue("LN");
                         }
+                    }
+
+                    // OBX-8 Interpretation
+                    if (obs.hasInterpretation()) {
+                        obx.getAbnormalFlags(0).setValue(obs.getInterpretationFirstRep().getCodingFirstRep().getCode());
+                    }
+
+                    // OBX-14 Effective Date/Time
+                    if (obs.hasEffectiveDateTimeType()) {
+                        obx.getDateTimeOfTheObservation().getTime().setValue(
+                                new SimpleDateFormat("yyyyMMddHHmm").format(obs.getEffectiveDateTimeType().getValue()));
                     }
 
                     // OBX-11 Status
@@ -324,10 +557,25 @@ public class FhirToHl7Service {
                             case PRELIMINARY:
                                 obx.getObservationResultStatus().setValue("P");
                                 break;
-                            default:
+                            case AMENDED:
                                 obx.getObservationResultStatus().setValue("C");
-                                break; // Corrected/Other
+                                break;
+                            case ENTEREDINERROR:
+                                obx.getObservationResultStatus().setValue("W");
+                                break;
+                            case CANCELLED:
+                                obx.getObservationResultStatus().setValue("X");
+                                break;
+                            default:
+                                obx.getObservationResultStatus().setValue("F");
+                                break;
                         }
+                    }
+
+                    // OBX-14 Effective Date/Time
+                    if (obs.hasEffectiveDateTimeType()) {
+                        obx.getDateTimeOfTheObservation().getTime().setValue(
+                                new SimpleDateFormat("yyyyMMddHHmm").format(obs.getEffectiveDateTimeType().getValue()));
                     }
 
                     obxCount++;
@@ -364,7 +612,6 @@ public class FhirToHl7Service {
 
             // Map AllergyIntolerance to AL1
             int al1Count = 0;
-            Terser terser = new Terser(adt);
             for (Bundle.BundleEntryComponent entry : bundle.getEntry()) {
                 if (entry.getResource().getResourceType() == ResourceType.AllergyIntolerance) {
                     AllergyIntolerance allergy = (AllergyIntolerance) entry.getResource();
@@ -414,24 +661,45 @@ public class FhirToHl7Service {
                     // IN1-1 Set ID
                     terser.set(in1Path + "-1", String.valueOf(in1Count + 1));
 
-                    // IN1-36 Policy Number
+                    // IN1-36 Policy Number / Subscriber ID
                     if (coverage.hasSubscriberId()) {
                         terser.set(in1Path + "-36", coverage.getSubscriberId());
                     }
 
+                    // IN1-2 Insurance Plan ID
+                    if (coverage.hasIdentifier()) {
+                        terser.set(in1Path + "-2-1", coverage.getIdentifierFirstRep().getValue());
+                    }
+
                     // IN1-3 Company ID / Payor
-                    if (!coverage.getPayor().isEmpty()) {
+                    if (coverage.hasPayor()) {
                         org.hl7.fhir.r4.model.Reference payor = coverage.getPayorFirstRep();
                         if (payor.hasReference()) {
-                            // strip "Organization/" if present
                             String id = payor.getReference();
                             if (id.contains("/"))
-                                id = id.substring(id.indexOf("/") + 1);
+                                id = id.substring(id.lastIndexOf("/") + 1);
                             terser.set(in1Path + "-3-1", id);
                         }
                         if (payor.hasDisplay()) {
                             terser.set(in1Path + "-4-1", payor.getDisplay());
                         }
+                    }
+
+                    // IN1-12/13 Effective Dates
+                    if (coverage.hasPeriod()) {
+                        if (coverage.getPeriod().hasStart()) {
+                            terser.set(in1Path + "-12",
+                                    new SimpleDateFormat("yyyyMMdd").format(coverage.getPeriod().getStart()));
+                        }
+                        if (coverage.getPeriod().hasEnd()) {
+                            terser.set(in1Path + "-13",
+                                    new SimpleDateFormat("yyyyMMdd").format(coverage.getPeriod().getEnd()));
+                        }
+                    }
+
+                    // IN1-17 Relationship to Insured
+                    if (coverage.hasRelationship()) {
+                        terser.set(in1Path + "-17-1", coverage.getRelationship().getCodingFirstRep().getCode());
                     }
 
                     // IN1-47 Plan Type
@@ -505,6 +773,11 @@ public class FhirToHl7Service {
                     // GT1-6 Phone
                     if (rp.hasTelecom()) {
                         terser.set(gt1Path + "-6-1", rp.getTelecomFirstRep().getValue());
+                    }
+
+                    // GT1-8 DOB
+                    if (rp.hasBirthDate()) {
+                        terser.set(gt1Path + "-8", new SimpleDateFormat("yyyyMMdd").format(rp.getBirthDate()));
                     }
 
                     // GT1-11 Relationship
