@@ -18,6 +18,10 @@ A high-performance, secure, and multi-tenant integration service bridging **Lega
 *   **Enterprise Security**:
     *   **DoS Protection**: Pre-computed credential hashing to prevent CPU exhaustion.
     *   **Fail-Closed Security**: Default deny-all policy for unknown endpoints.
+*   **Performance**:
+    *   **Async I/O**: Non-blocking Database writes for Audit logs and Transaction status updates using Spring `@Async`.
+    *   **Optimized Consumers**: RabbitMQ listeners offload persistence tasks to maximize message throughput.
+    *   **Connection Pooling**: Production-grade connection pooling for RabbitMQ and MongoDB.
     *   **Secure Observability**: Metrics restricted to Admin users.
 *   **Reliability**: Built-in **Dead Letter Queue (DLQ)** handling and **Health Checks** for dependent services.
 *   **Containerized**: Production-ready Docker images and Compose setup.

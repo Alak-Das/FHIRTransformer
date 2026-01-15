@@ -36,4 +36,16 @@ public class AuditService {
             log.error("Failed to save transaction log for ID {}: {}", transactionId, e.getMessage(), e);
         }
     }
+
+    @Async
+    public void updateTransactionStatus(String transactionId, String status) {
+        try {
+            transactionRepository.findByTransactionId(transactionId).ifPresent(record -> {
+                record.setStatus(status);
+                transactionRepository.save(record);
+            });
+        } catch (Exception e) {
+            log.error("Failed to update status for transaction ID {}: {}", transactionId, e.getMessage(), e);
+        }
+    }
 }

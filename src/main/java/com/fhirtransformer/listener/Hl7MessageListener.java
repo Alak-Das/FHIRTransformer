@@ -3,11 +3,8 @@ package com.fhirtransformer.listener;
 import com.fhirtransformer.service.Hl7ToFhirService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.fhirtransformer.repository.TransactionRepository;
-import com.fhirtransformer.model.TransactionRecord;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
-import java.util.Optional;
 
 @Component
 public class Hl7MessageListener {
@@ -15,17 +12,18 @@ public class Hl7MessageListener {
     private static final Logger log = LoggerFactory.getLogger(Hl7MessageListener.class);
     private final Hl7ToFhirService hl7ToFhirService;
     private final org.springframework.amqp.rabbit.core.RabbitTemplate rabbitTemplate;
-    private final TransactionRepository transactionRepository;
+    // private final TransactionRepository transactionRepository; // Removed
+    private final com.fhirtransformer.service.AuditService auditService; // Added
 
     @org.springframework.beans.factory.annotation.Value("${app.rabbitmq.output-queue}")
     private String outputQueue;
 
     public Hl7MessageListener(Hl7ToFhirService hl7ToFhirService,
             org.springframework.amqp.rabbit.core.RabbitTemplate rabbitTemplate,
-            TransactionRepository transactionRepository) {
+            com.fhirtransformer.service.AuditService auditService) {
         this.hl7ToFhirService = hl7ToFhirService;
         this.rabbitTemplate = rabbitTemplate;
-        this.transactionRepository = transactionRepository;
+        this.auditService = auditService;
     }
 
     @RabbitListener(queues = "${app.rabbitmq.queue}")
@@ -43,15 +41,7 @@ public class Hl7MessageListener {
             String[] mshFields = segments[0].split("\\|", -1);
             if (mshFields.length > 9) {
                 String transactionId = mshFields[9];
-                Optional<TransactionRecord> recordOpt = transactionRepository.findByTransactionId(transactionId);
-                if (recordOpt.isPresent()) {
-                    TransactionRecord record = recordOpt.get();
-                    record.setStatus("PROCESSED");
-                    transactionRepository.save(record);
-                } else {
-                    log.warn("Transaction ID {} not found for update", transactionId);
-                    // Optionally create new one, but for now we follow 'update' instruction
-                }
+                auditService.updateTransactionStatus(transactionId, "PROCESSED");
             }
 
         } catch (Exception e) {
