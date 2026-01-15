@@ -104,8 +104,8 @@ Spins up the Transformer, MongoDB, and RabbitMQ.
 ```bash
 docker-compose up -d --build
 ```
-*   **API**: `http://localhost:9090`
-*   **RabbitMQ Console**: `http://localhost:15672` (guest/guest)
+*   **API**: `http://localhost:9091`
+*   **RabbitMQ Console**: `http://localhost:15673` (guest/guest)
 
 ### Option 2: Local Java
 Requires local Mongo (27017) and RabbitMQ (5672).

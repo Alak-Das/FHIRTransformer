@@ -2,7 +2,7 @@ services:
   fhir-transformer:
     build: .
     ports:
-      - "9090:8080"
+      - "9091:8080"
     restart: unless-stopped
     container_name: fhir-transformer
     depends_on:
@@ -18,9 +18,8 @@ services:
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+    # ports removed to avoid bind errors
+
     container_name: fhir-mq
     restart: unless-stopped
     healthcheck:
@@ -31,8 +30,8 @@ services:
 
   mongo:
     image: mongo:latest
-    ports:
-      - "27017:27017"
+    # ports removed to avoid bind errors
+
     container_name: fhir-mongo
     restart: unless-stopped
     volumes:
