@@ -12,8 +12,8 @@ import com.fhirtransformer.dto.StatusCount;
 import java.util.Map;
 import com.fhirtransformer.model.Tenant;
 import com.fhirtransformer.model.TransactionRecord;
-import com.fhirtransformer.repository.TransactionRepository;
 import com.fhirtransformer.service.TenantService;
+import com.fhirtransformer.service.TransactionService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -28,12 +28,12 @@ import java.util.List;
 public class TenantController {
 
     private final TenantService tenantService;
-    private final TransactionRepository transactionRepository;
+    private final TransactionService transactionService;
 
     @Autowired
-    public TenantController(TenantService tenantService, TransactionRepository transactionRepository) {
+    public TenantController(TenantService tenantService, TransactionService transactionService) {
         this.tenantService = tenantService;
-        this.transactionRepository = transactionRepository;
+        this.transactionService = transactionService;
     }
 
     @GetMapping
@@ -49,10 +49,10 @@ public class TenantController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        Page<TransactionRecord> pageRecords = transactionRepository.findByTenantIdAndTimestampBetween(
+        Page<TransactionRecord> pageRecords = transactionService.findByTenantIdAndTimestampBetween(
                 tenantId, startDate, endDate, PageRequest.of(page, size, Sort.by("timestamp").descending()));
 
-        List<StatusCount> statusStats = transactionRepository.countStatusByTenantIdAndTimestampBetween(
+        List<StatusCount> statusStats = transactionService.countStatusByTenantIdAndTimestampBetween(
                 tenantId, startDate, endDate);
 
         Map<String, Long> statusCounts = statusStats.stream()

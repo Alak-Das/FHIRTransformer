@@ -324,21 +324,7 @@ public class Hl7ToFhirService {
         processTelecom(terser, "/.PID-14", patient, ContactPoint.ContactPointUse.WORK);
 
         // Z-Segment Processing
-        try {
-            for (String groupName : hapiMsg.getNames()) {
-                if (groupName.startsWith("Z")) {
-                    ca.uhn.hl7v2.model.Structure struct = hapiMsg.get(groupName);
-                    if (struct instanceof Segment) {
-                        Segment seg = (Segment) struct;
-                        patient.addExtension()
-                                .setUrl(MappingConstants.EXT_HL7_Z_SEGMENT)
-                                .setValue(new StringType(seg.encode()));
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Error processing Z-segments: {}", e.getMessage());
-        }
+        processZSegments(terser, hapiMsg, patient);
 
         bundle.addEntry().setResource(patient).getRequest().setMethod(Bundle.HTTPVerb.POST).setUrl("Patient");
         return patient;
@@ -1091,5 +1077,64 @@ public class Hl7ToFhirService {
             log.warn("Failed to parse HL7 date: {}", hl7Date);
         }
         return null;
+    }
+
+    private void processZSegments(Terser terser, Message hapiMsg, Patient patient) {
+        log.debug("Processing Z-Segments...");
+
+        // 1. Process specific ZPI Segment (Custom Patient Info)
+        try {
+            // Check for ZPI fields
+            String setID = terser.get("/.ZPI-1");
+            String petName = terser.get("/.ZPI-2");
+            String vipLevel = terser.get("/.ZPI-3");
+            String archiveStatus = terser.get("/.ZPI-4");
+
+            if (petName != null || vipLevel != null || archiveStatus != null) {
+                log.info("Found ZPI Segment (SetID={}): Pet='{}', VIP='{}', Archive='{}'", setID, petName, vipLevel,
+                        archiveStatus);
+
+                if (petName != null && !petName.isEmpty()) {
+                    patient.addExtension()
+                            .setUrl("http://example.org/fhir/StructureDefinition/pet-name")
+                            .setValue(new StringType(petName));
+                }
+
+                if (vipLevel != null && !vipLevel.isEmpty()) {
+                    patient.addExtension()
+                            .setUrl("http://example.org/fhir/StructureDefinition/vip-level")
+                            .setValue(new StringType(vipLevel));
+                }
+
+                if (archiveStatus != null && !archiveStatus.isEmpty()) {
+                    patient.addExtension()
+                            .setUrl("http://example.org/fhir/StructureDefinition/archive-status")
+                            .setValue(new StringType(archiveStatus));
+                }
+            }
+        } catch (Exception e) {
+            log.debug("ZPI segment not found or parse error: {}", e.getMessage());
+        }
+
+        // 2. Preserve other Z-segments as raw extensions (Generic Handling)
+        try {
+            for (String groupName : hapiMsg.getNames()) {
+                if (groupName.startsWith("Z") && !groupName.equals("ZPI")) {
+                    try {
+                        ca.uhn.hl7v2.model.Structure struct = hapiMsg.get(groupName);
+                        if (struct instanceof Segment) {
+                            Segment seg = (Segment) struct;
+                            patient.addExtension()
+                                    .setUrl(MappingConstants.EXT_HL7_Z_SEGMENT)
+                                    .setValue(new StringType(seg.encode()));
+                        }
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Error looking up generic Z-segments: {}", e.getMessage());
+        }
     }
 }

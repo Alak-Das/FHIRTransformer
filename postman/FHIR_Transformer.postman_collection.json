@@ -190,12 +190,12 @@
                             "basic": [
                                 {
                                     "key": "password",
-                                    "value": "password123",
+                                    "value": "password",
                                     "type": "string"
                                 },
                                 {
                                     "key": "username",
-                                    "value": "tenant1",
+                                    "value": "admin",
                                     "type": "string"
                                 }
                             ]
@@ -273,12 +273,12 @@
                             "basic": [
                                 {
                                     "key": "password",
-                                    "value": "password123",
+                                    "value": "password",
                                     "type": "string"
                                 },
                                 {
                                     "key": "username",
-                                    "value": "tenant1",
+                                    "value": "admin",
                                     "type": "string"
                                 }
                             ]
@@ -353,12 +353,12 @@
                             "basic": [
                                 {
                                     "key": "password",
-                                    "value": "password123",
+                                    "value": "password",
                                     "type": "string"
                                 },
                                 {
                                     "key": "username",
-                                    "value": "tenant1",
+                                    "value": "admin",
                                     "type": "string"
                                 }
                             ]
@@ -428,12 +428,12 @@
                             "basic": [
                                 {
                                     "key": "password",
-                                    "value": "password123",
+                                    "value": "password",
                                     "type": "string"
                                 },
                                 {
                                     "key": "username",
-                                    "value": "tenant1",
+                                    "value": "admin",
                                     "type": "string"
                                 }
                             ]
@@ -500,12 +500,12 @@
                             "basic": [
                                 {
                                     "key": "password",
-                                    "value": "password123",
+                                    "value": "password",
                                     "type": "string"
                                 },
                                 {
                                     "key": "username",
-                                    "value": "tenant1",
+                                    "value": "admin",
                                     "type": "string"
                                 }
                             ]
@@ -574,12 +574,12 @@
                             "basic": [
                                 {
                                     "key": "password",
-                                    "value": "password123",
+                                    "value": "password",
                                     "type": "string"
                                 },
                                 {
                                     "key": "username",
-                                    "value": "tenant1",
+                                    "value": "admin",
                                     "type": "string"
                                 }
                             ]
@@ -648,12 +648,12 @@
                             "basic": [
                                 {
                                     "key": "password",
-                                    "value": "password123",
+                                    "value": "password",
                                     "type": "string"
                                 },
                                 {
                                     "key": "username",
-                                    "value": "tenant1",
+                                    "value": "admin",
                                     "type": "string"
                                 }
                             ]
@@ -804,12 +804,12 @@
                             "basic": [
                                 {
                                     "key": "password",
-                                    "value": "password123",
+                                    "value": "password",
                                     "type": "string"
                                 },
                                 {
                                     "key": "username",
-                                    "value": "tenant1",
+                                    "value": "admin",
                                     "type": "string"
                                 }
                             ]
@@ -864,12 +864,12 @@
                             "basic": [
                                 {
                                     "key": "password",
-                                    "value": "password123",
+                                    "value": "password",
                                     "type": "string"
                                 },
                                 {
                                     "key": "username",
-                                    "value": "tenant1",
+                                    "value": "admin",
                                     "type": "string"
                                 }
                             ]
@@ -885,6 +885,71 @@
                         "body": {
                             "mode": "raw",
                             "raw": "INVALID HEADER|..."
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "v2-to-fhir-sync"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Custom Z-Segment Conversion",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Contains Pet Name Extension\", function () {",
+                                    "    var hasPet = jsonData.entry[0].resource.extension.some(e => e.url.includes(\"pet-name\") && e.valueString === \"Fluffy\");",
+                                    "    pm.expect(hasPet).to.be.true;",
+                                    "});",
+                                    "pm.test(\"Contains VIP Level Extension\", function () {",
+                                    "    var hasVIP = jsonData.entry[0].resource.extension.some(e => e.url.includes(\"vip-level\") && e.valueString === \"VIP-Gold\");",
+                                    "    pm.expect(hasVIP).to.be.true;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "text/plain",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01|1002|P|2.5\r\nPID|1||100||DOE^JANE||19700101|F\r\nZPI|1|Fluffy|VIP-Gold|Active"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
@@ -958,6 +1023,21 @@
                                 "convert",
                                 "fhir-to-v2"
                             ]
+                        },
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
                         }
                     }
                 },
@@ -1025,6 +1105,21 @@
                                 "convert",
                                 "fhir-to-v2-sync"
                             ]
+                        },
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
                         }
                     }
                 },
@@ -1085,6 +1180,21 @@
                                 "convert",
                                 "fhir-to-v2-sync"
                             ]
+                        },
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
                         }
                     }
                 },
@@ -1142,6 +1252,21 @@
                                 "api",
                                 "convert",
                                 "fhir-to-v2-sync"
+                            ]
+                        },
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
                             ]
                         }
                     }
@@ -1201,6 +1326,21 @@
                                 "convert",
                                 "fhir-to-v2-sync"
                             ]
+                        },
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
                         }
                     }
                 },
@@ -1258,6 +1398,21 @@
                                 "api",
                                 "convert",
                                 "fhir-to-v2-sync"
+                            ]
+                        },
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
                             ]
                         }
                     }
@@ -1320,6 +1475,21 @@
                                 "convert",
                                 "fhir-to-v2-sync"
                             ]
+                        },
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
                         }
                     }
                 },
@@ -1378,6 +1548,21 @@
                                 "convert",
                                 "fhir-to-v2-sync"
                             ]
+                        },
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
                         }
                     }
                 },
@@ -1435,6 +1620,21 @@
                                 "api",
                                 "convert",
                                 "fhir-to-v2-sync"
+                            ]
+                        },
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
                             ]
                         }
                     }
@@ -1496,6 +1696,21 @@
                                 "api",
                                 "convert",
                                 "fhir-to-v2-sync"
+                            ]
+                        },
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
                             ]
                         }
                     }
@@ -1615,6 +1830,21 @@
                                 "convert",
                                 "fhir-to-v2-sync"
                             ]
+                        },
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
                         }
                     }
                 },
@@ -1658,6 +1888,21 @@
                                 "api",
                                 "convert",
                                 "fhir-to-v2-sync"
+                            ]
+                        },
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
                             ]
                         }
                     }
@@ -1703,6 +1948,21 @@
                                 "convert",
                                 "fhir-to-v2-sync"
                             ]
+                        },
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
                         }
                     }
                 }
@@ -1742,6 +2002,21 @@
                                 "actuator",
                                 "health"
                             ]
+                        },
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
                         }
                     }
                 },
@@ -1771,6 +2046,69 @@
                             "path": [
                                 "actuator",
                                 "metrics"
+                            ]
+                        },
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Caching Performance Check (Tenants)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "pm.test(\"Response is fast (cached < 200ms)\", function () {",
+                                    "    pm.expect(pm.response.responseTime).to.be.below(200);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/tenants",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "tenants"
                             ]
                         }
                     }

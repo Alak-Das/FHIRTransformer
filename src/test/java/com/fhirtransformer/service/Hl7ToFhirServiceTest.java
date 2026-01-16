@@ -29,4 +29,22 @@ public class Hl7ToFhirServiceTest {
         assertTrue(fhir.contains("\"family\": \"DOE\""));
         assertTrue(fhir.contains("\"gender\": \"male\""));
     }
+
+    @Test
+    public void testZSegmentConversion() throws Exception {
+        // HL7 with ZPI segment
+        // MSH-9: ADT^A01 (Triggers CustomADT_A01)
+        String hl7 = "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01|1002|P|2.5\r" +
+                "PID|1||100||DOE^JANE||19700101|F\r" +
+                "ZPI|1|Fluffy|VIP-Gold|Active"; // Custom ZPI Segment
+
+        String fhir = hl7ToFhirService.convertHl7ToFhir(hl7);
+
+        System.out.println("Z-Segment Test Result: " + fhir);
+        assertNotNull(fhir);
+        assertTrue(fhir.contains("Fluffy"), "Should contain Pet Name from ZPI-2");
+        assertTrue(fhir.contains("VIP-Gold"), "Should contain VIP Level from ZPI-3");
+        assertTrue(fhir.contains("http://example.org/fhir/StructureDefinition/pet-name"),
+                "Should contain extension URL");
+    }
 }

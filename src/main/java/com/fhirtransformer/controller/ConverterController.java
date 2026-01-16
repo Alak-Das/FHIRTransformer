@@ -23,12 +23,17 @@ import java.security.Principal;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.fhirtransformer.dto.BatchConversionResponse;
+import com.fhirtransformer.dto.BatchHl7Request;
+import com.fhirtransformer.service.BatchConversionService;
+
 @RestController
 @RequestMapping("/api/convert")
 public class ConverterController {
 
     private final Hl7ToFhirService hl7ToFhirService;
     private final FhirToHl7Service fhirToHl7Service;
+    private final BatchConversionService batchConversionService;
     private final RabbitTemplate rabbitTemplate;
     private final MessageEnrichmentService messageEnrichmentService;
     private final AuditService auditService;
@@ -49,12 +54,14 @@ public class ConverterController {
     @Autowired
     public ConverterController(Hl7ToFhirService hl7ToFhirService,
             FhirToHl7Service fhirToHl7Service,
+            BatchConversionService batchConversionService,
             RabbitTemplate rabbitTemplate,
             MessageEnrichmentService messageEnrichmentService,
             AuditService auditService,
             ObjectMapper objectMapper) {
         this.hl7ToFhirService = hl7ToFhirService;
         this.fhirToHl7Service = fhirToHl7Service;
+        this.batchConversionService = batchConversionService;
         this.rabbitTemplate = rabbitTemplate;
         this.messageEnrichmentService = messageEnrichmentService;
         this.auditService = auditService;
@@ -116,6 +123,62 @@ public class ConverterController {
                 MessageType.FHIR_TO_V2_SYNC, TransactionStatus.COMPLETED);
 
         return ResponseEntity.ok(hl7Message);
+    }
+
+    /**
+     * Batch convert multiple HL7 messages to FHIR in parallel.
+     * 
+     * @param request   Batch request containing list of HL7 messages
+     * @param principal Authenticated user
+     * @return BatchConversionResponse with results and errors
+     */
+    @PostMapping(value = "/v2-to-fhir-batch", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<BatchConversionResponse> convertHl7ToFhirBatch(
+            @RequestBody @jakarta.validation.Valid BatchHl7Request request,
+            Principal principal) {
+
+        String tenantId = getTenantId(principal);
+
+        // Log batch operation start
+        auditService.logTransaction(tenantId, "BATCH-" + System.currentTimeMillis(),
+                MessageType.V2_TO_FHIR_SYNC, TransactionStatus.ACCEPTED);
+
+        BatchConversionResponse response = batchConversionService.convertHl7ToFhirBatch(request.getMessages());
+
+        // Log batch operation completion
+        auditService.logTransaction(tenantId, "BATCH-" + System.currentTimeMillis(),
+                MessageType.V2_TO_FHIR_SYNC,
+                response.getFailureCount() == 0 ? TransactionStatus.COMPLETED : TransactionStatus.FAILED);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Batch convert multiple FHIR bundles to HL7 in parallel.
+     * 
+     * @param fhirBundles List of FHIR Bundle JSON strings
+     * @param principal   Authenticated user
+     * @return BatchConversionResponse with results and errors
+     */
+    @PostMapping(value = "/fhir-to-v2-batch", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<BatchConversionResponse> convertFhirToHl7Batch(
+            @RequestBody java.util.List<String> fhirBundles,
+            Principal principal) {
+
+        String tenantId = getTenantId(principal);
+
+        // Log batch operation start
+        auditService.logTransaction(tenantId, "BATCH-" + System.currentTimeMillis(),
+                MessageType.FHIR_TO_V2_SYNC, TransactionStatus.ACCEPTED);
+
+        BatchConversionResponse response = batchConversionService.convertFhirToHl7Batch(fhirBundles);
+
+        // Log batch operation completion
+        auditService.logTransaction(tenantId, "BATCH-" + System.currentTimeMillis(),
+                MessageType.FHIR_TO_V2_SYNC,
+                response.getFailureCount() == 0 ? TransactionStatus.COMPLETED : TransactionStatus.FAILED);
+
+        return ResponseEntity.ok(response);
     }
 
     private String getTenantId(Principal principal) {

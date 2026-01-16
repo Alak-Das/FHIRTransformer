@@ -19,6 +19,7 @@ Welcome to the FHIR Transformer documentation! This index will help you find the
 | **[FEATURES.md](FEATURES.md)** | Enterprise features, use cases, deployment checklist | Before production deployment |
 | **[PERFORMANCE.md](PERFORMANCE.md)** | Performance optimizations, benchmarks, tuning guide | When optimizing for scale |
 | **[CHANGELOG.md](CHANGELOG.md)** | Version history and release notes | When upgrading versions |
+| **[ROADMAP.md](ROADMAP.md)** | Future improvements and enhancement opportunities | Planning next features |
 
 ### For Developers
 

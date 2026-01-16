@@ -5,6 +5,8 @@ import com.fhirtransformer.exception.TenantNotFoundException;
 import com.fhirtransformer.model.Tenant;
 import com.fhirtransformer.repository.TenantRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -23,10 +25,20 @@ public class TenantService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    /**
+     * Get all tenants.
+     * Cached for 1 hour to reduce database load.
+     */
+    @Cacheable(value = "allTenants")
     public List<Tenant> getAllTenants() {
         return tenantRepository.findAll();
     }
 
+    /**
+     * Onboard a new tenant.
+     * Evicts allTenants cache since the list has changed.
+     */
+    @CacheEvict(value = "allTenants", allEntries = true)
     public Tenant onboardTenant(String tenantId, String password, String name) {
         if (tenantRepository.findByTenantId(tenantId).isPresent()) {
             throw new TenantAlreadyExistsException("Tenant with ID " + tenantId + " already exists");
@@ -38,6 +50,11 @@ public class TenantService {
         return tenantRepository.save(tenant);
     }
 
+    /**
+     * Update tenant information.
+     * Evicts allTenants cache since tenant data has changed.
+     */
+    @CacheEvict(value = "allTenants", allEntries = true)
     public Tenant updateTenant(String tenantId, String password, String name) {
         return tenantRepository.findByTenantId(tenantId)
                 .map(tenant -> {
@@ -52,6 +69,11 @@ public class TenantService {
                 .orElseThrow(() -> new TenantNotFoundException("Tenant with ID " + tenantId + " not found"));
     }
 
+    /**
+     * Delete a tenant.
+     * Evicts allTenants cache since the list has changed.
+     */
+    @CacheEvict(value = "allTenants", allEntries = true)
     public void deleteTenant(String tenantId) {
         Optional<Tenant> tenant = tenantRepository.findByTenantId(tenantId);
         if (tenant.isPresent()) {

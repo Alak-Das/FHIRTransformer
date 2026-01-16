@@ -25,6 +25,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.fhirtransformer.service.BatchConversionService;
+
 public class ConverterControllerTest {
 
         private MockMvc mockMvc;
@@ -34,6 +36,9 @@ public class ConverterControllerTest {
 
         @Mock
         private FhirToHl7Service fhirToHl7Service;
+
+        @Mock
+        private BatchConversionService batchConversionService;
 
         @Mock
         private RabbitTemplate rabbitTemplate;
@@ -50,7 +55,7 @@ public class ConverterControllerTest {
         public void setup() {
                 MockitoAnnotations.openMocks(this);
                 ConverterController controller = new ConverterController(
-                                hl7ToFhirService, fhirToHl7Service, rabbitTemplate,
+                                hl7ToFhirService, fhirToHl7Service, batchConversionService, rabbitTemplate,
                                 messageEnrichmentService, auditService, objectMapper);
 
                 ReflectionTestUtils.setField(controller, "exchange", "test-exchange");

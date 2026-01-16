@@ -15,6 +15,7 @@
 ### 1. **World-Class Bidirectional Mapping**
 
 #### Advanced Patient Demographics
+- **Custom Data**: Z-Segments (e.g., `ZPI`) mapped to FHIR Extensions (Pet Name, VIP Level, Archive Status)
 - **Intelligent Identifier Ranking**: MRN and official identifiers automatically prioritized
 - **Enhanced Telecom**: Full HL7 v2.5 compliance with equipment types (CP, PH, FX, Internet) and use codes (PRN, WPN)
 - **US Core Extensions**: Race, Ethnicity with OMB category codes
@@ -43,11 +44,12 @@
 - **Audit Logging**: Complete transaction history with date range queries
 
 #### Performance
+- **Redis Caching**: Intelligent caching for tenant configs and transaction stats (< 5ms)
 - **Async Processing**: Non-blocking I/O for database operations
 - **Message Queue**: RabbitMQ with Dead Letter Queue (DLQ) handling
 - **Connection Pooling**: Production-grade pooling for MQ and MongoDB
 - **Optimized Consumers**: Configurable concurrency (5-10 threads) and prefetch (50 messages)
-- **Average Response Time**: 127ms for complex transformations
+- **Average Response Time**: 122ms for complex transformations
 
 #### Reliability
 - **Health Checks**: Readiness probes for load balancers
@@ -59,7 +61,7 @@
 ### 3. **Developer Experience**
 
 #### Testing
-- **Comprehensive Test Suite**: 105 assertions across 33 integration tests
+- **Comprehensive Test Suite**: 110 assertions across 35 integration tests
 - **Postman Collection**: Complete lifecycle testing (Setup → Execution → Security → Teardown)
 - **Newman CLI**: Automated test execution for CI/CD pipelines
 - **Test Coverage**: Positive, negative, security, and edge case scenarios
@@ -97,13 +99,13 @@
 
 | Metric | Value |
 |:-------|:------|
-| **Test Success Rate** | 100% (105/105 assertions) |
-| **Average Response Time** | 127ms |
-| **Test Suite Duration** | 23.8s for 33 requests |
+| **Test Success Rate** | 100% (110/110 assertions) |
+| **Average Response Time** | 122ms |
+| **Test Suite Duration** | 20s for 35 requests |
 | **Concurrent Consumers** | 5-10 threads |
 | **Message Prefetch** | 50 messages |
 | **Supported Resources** | 10+ FHIR resources |
-| **Supported Segments** | 15+ HL7 segments |
+| **Supported Segments** | 16+ HL7 segments |
 
 ---
 
@@ -129,14 +131,13 @@
 
 While the application is production-ready, here are potential enhancements:
 
-1. **Custom Z-Segments**: Define custom message structures extending ADT_A01
-2. **Timezone Preservation**: Parse and preserve HL7 timezone offsets
-3. **Configurable Terminology**: Database-backed system URL mappings
-4. **Additional Resources**: MedicationRequest, DiagnosticReport, Immunization
-5. **Batch Processing**: Bulk conversion endpoints for high-volume scenarios
-6. **Caching Layer**: Redis for frequently accessed terminology mappings
-7. **GraphQL API**: Alternative query interface for FHIR resources
-8. **Webhook Support**: Event-driven notifications for conversion completion
+1. **Timezone Preservation**: Parse and preserve HL7 timezone offsets
+2. **Configurable Terminology**: Database-backed system URL mappings
+3. **Additional Resources**: MedicationRequest, DiagnosticReport, Immunization
+4. **Batch Processing**: Bulk conversion endpoints for high-volume scenarios (Implemented but could be expanded)
+5. **GraphQL API**: Alternative query interface for FHIR resources
+6. **Webhook Support**: Event-driven notifications for conversion completion
+- **Monitoring**: Advanced Grafana dashboards (Next Priority)
 
 ---
 

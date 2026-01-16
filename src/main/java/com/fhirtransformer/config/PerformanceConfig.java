@@ -3,8 +3,12 @@ package com.fhirtransformer.config;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.hl7v2.DefaultHapiContext;
 import ca.uhn.hl7v2.HapiContext;
+import ca.uhn.hl7v2.parser.CustomModelClassFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Performance optimization: Create singleton FHIR and HL7 contexts
@@ -33,6 +37,14 @@ public class PerformanceConfig {
     @Bean
     public HapiContext hapiContext() {
         DefaultHapiContext ctx = new DefaultHapiContext();
+
+        // Configure custom model classes (e.g., ZPI segment)
+        Map<String, String[]> customPackages = new HashMap<>();
+        customPackages.put("2.5", new String[] { "com.fhirtransformer.model.hl7.v25" });
+
+        CustomModelClassFactory cmcf = new CustomModelClassFactory(customPackages);
+        ctx.setModelClassFactory(cmcf);
+
         // Disable validation for better performance with real-world messages
         ctx.setValidationContext(new ca.uhn.hl7v2.validation.impl.NoValidation());
         return ctx;
