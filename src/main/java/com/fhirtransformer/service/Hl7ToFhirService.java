@@ -664,9 +664,18 @@ public class Hl7ToFhirService {
                 int segmentCount = -1;
                 while (true) {
                     segmentCount++;
-                    String segmentPath = segmentName + "(" + segmentCount + ")";
+                    String segmentPath = "/." + segmentName + "(" + segmentCount + ")";
+                    if (segmentCount > 50) {
+                        log.warn("Max medication segments reached for {}", segmentName);
+                        break;
+                    }
                     try {
+                        // Check if segment exists by trying to access it
+                        // HAPI Terser usually throws if not found, but we add depth check safety
                         terser.getSegment(segmentPath);
+                        // Additionally check if the segment actually has content if possible,
+                        // but getSegment throwing is the standard check.
+                        // The loop limit is the primary safety net here against OOM.
                     } catch (Exception e) {
                         break; // No more segments of this type
                     }
@@ -687,6 +696,17 @@ public class Hl7ToFhirService {
                     if ("RXE".equals(segmentName)) {
                         code = terser.get(segmentPath + "-2-1");
                         display = terser.get(segmentPath + "-2-2");
+
+                        // Fallback if component parsing fails but field exists
+                        if (code == null) {
+                            String raw = terser.get(segmentPath + "-2");
+                            log.info("RXE-2-1 is null. Raw RXE-2: {}", raw);
+                            if (raw != null && raw.contains("^")) {
+                                code = raw.split("\\^")[0];
+                            } else {
+                                code = raw; // Use whole field if no caret
+                            }
+                        }
                     } else if ("RXO".equals(segmentName)) {
                         code = terser.get(segmentPath + "-1-1");
                         display = terser.get(segmentPath + "-1-2");
@@ -715,6 +735,9 @@ public class Hl7ToFhirService {
                             coding.setDisplay(display);
                         medication.addCoding(coding);
                         medRequest.setMedication(medication);
+                    } else {
+                        log.warn("Skipping MedicationRequest for segment {} due to missing code", segmentPath);
+                        continue; // Skip invalid resource to prevent validation error
                     }
 
                     // Dosage Instructions

@@ -19,6 +19,12 @@ services:
       REDIS_PORT: 6379
     volumes:
       - ./src/main/resources/application.properties:/app/config/application.properties
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
