@@ -74,6 +74,7 @@ FHIRTransformer/
 ├── 📄 PERFORMANCE.md         ⚡ Performance guide & benchmarks
 ├── 📄 CONTRIBUTING.md        👥 Developer contribution guide
 ├── 📄 CHANGELOG.md           📋 Version history
+├── 📄 Z_SEGMENT_SUPPORT.md   🧩 Z-Segment features
 ├── 📄 DOCS.md                📚 This file - Documentation index
 ├── 📄 LICENSE                ⚖️ MIT License
 ├── 📄 pom.xml                🔧 Maven dependencies
@@ -147,7 +148,7 @@ export LOG_LEVEL="INFO"
 
 ## 📊 Documentation Statistics
 
-- **Total Documentation Files**: 6 (README, FEATURES, PERFORMANCE, CONTRIBUTING, CHANGELOG, DOCS)
+- **Total Documentation Files**: 7 (README, FEATURES, PERFORMANCE, CONTRIBUTING, CHANGELOG, DOCS, Z_SEGMENT_SUPPORT)
 - **Total Pages**: ~50 pages of comprehensive documentation
 - **Code Comments**: Extensive inline documentation
 - **Test Documentation**: 33 integration tests with detailed assertions
@@ -209,7 +210,7 @@ export LOG_LEVEL="INFO"
 
 ## 📈 Documentation Maintenance
 
-This documentation is actively maintained. Last updated: **2026-01-16**
+This documentation is actively maintained. Last updated: **2026-01-17**
 
 ### Documentation Standards
 - **Keep it Current**: Update docs with code changes

@@ -2,7 +2,7 @@
 
 **Current Version**: 1.0.0 (Production Ready)  
 **Status**: ✅ All core features complete, 100% test coverage  
-**Last Updated**: 2026-01-16
+**Last Updated**: 2026-01-17
 
 ---
 
@@ -14,7 +14,7 @@ This document outlines potential enhancements organized by priority and impact. 
 
 ## 🚀 High Priority Enhancements
 
-## 🚀 High Priority Enhancements
+
 
 ### 1. **Custom Z-Segment Support** ⭐⭐⭐⭐⭐
 **Status**: ✅ **COMPLETED** (v0.0.1-SNAPSHOT)
@@ -28,34 +28,12 @@ This document outlines potential enhancements organized by priority and impact. 
 ---
 
 ### 2. **Timezone Offset Preservation** ⭐⭐⭐⭐
+**Status**: ✅ **COMPLETED** (v1.1.0)
 
-
-**Current State**: Uses system timezone for all date/time conversions  
-**Limitation**: HL7 timezone offsets (e.g., `20260116120000-0500`) not parsed
-
-**Proposed Solution**:
-```java
-// Parse HL7 datetime with timezone
-private ZonedDateTime parseHl7DateTime(String hl7Date) {
-    // Format: YYYYMMDDHHmmss[+/-]ZZZZ
-    if (hl7Date.length() >= 19) {
-        String offset = hl7Date.substring(14);
-        return ZonedDateTime.parse(hl7Date, HL7_DATETIME_FORMATTER);
-    }
-    return LocalDateTime.parse(hl7Date).atZone(ZoneId.systemDefault());
-}
-
-// Store timezone in FHIR
-dateTime.setTimeZone(TimeZone.getTimeZone(zonedDateTime.getZone()));
-```
-
-**Benefits**:
-- ✅ Accurate timestamp preservation
-- ✅ Multi-timezone support
-- ✅ Regulatory compliance (audit trails)
-
-**Effort**: Low (1 week)  
-**Impact**: Medium (improves data fidelity)
+**Implemented Solution**:
+- **Utility**: `DateTimeUtil` handles parsing and formatting with timezone support.
+- **Parsing**: Supports HL7 v2.5 datetime format with offsets (e.g., `-0500`).
+- **FHIR Support**: `DateTimeType` properly stores and retrieves timezone info.
 
 ---
 
@@ -141,37 +119,12 @@ imm.setVaccineCode(new CodeableConcept().addCoding(
 ---
 
 ### 5. **Batch Processing Endpoints** ⭐⭐⭐
+**Status**: ✅ **COMPLETED** (v1.1.0)
 
-**Current State**: Single message processing  
-**Limitation**: Inefficient for bulk imports/exports
-
-**Proposed Solution**:
-```java
-@PostMapping("/api/convert/v2-to-fhir-batch")
-public ResponseEntity<BatchResponse> convertBatch(
-    @RequestBody List<String> hl7Messages) {
-    
-    List<CompletableFuture<Bundle>> futures = hl7Messages.stream()
-        .map(msg -> CompletableFuture.supplyAsync(
-            () -> hl7ToFhirService.convert(msg), executor))
-        .collect(Collectors.toList());
-    
-    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-        .thenApply(v -> futures.stream()
-            .map(CompletableFuture::join)
-            .collect(Collectors.toList()))
-        .thenApply(BatchResponse::new)
-        .get();
-}
-```
-
-**Benefits**:
-- ✅ Process 1000s of messages efficiently
-- ✅ Parallel processing
-- ✅ Bulk data migration support
-
-**Effort**: Low (1 week)  
-**Impact**: High (enables bulk operations)
+**Implemented Solution**:
+- **Service**: `BatchConversionService` processes messages in parallel using `CompletableFuture`.
+- **API**: Added `/v2-to-fhir-batch` and `/fhir-to-v2-batch` endpoints.
+- **Reporting**: Returns detailed success/failure counts and error messages.
 
 ---
 
@@ -643,7 +596,7 @@ Medium Impact (Nice-to-Have):
 1. ✅ Timezone Offset Preservation (1 week)
 2. ✅ Batch Processing Endpoints (1 week)
 3. ✅ Redis Caching Layer (1 week)
-4. ✅ Custom Grafana Dashboards (1 week)
+4. [ ] Custom Grafana Dashboards (1 week)
 
 ### Phase 2 (Next 3-6 months)
 1. ✅ Custom Z-Segment Support (2-3 weeks)

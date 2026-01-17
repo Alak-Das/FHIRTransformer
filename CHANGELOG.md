@@ -117,8 +117,6 @@ A complete, enterprise-grade bidirectional HL7 v2.5 ↔ FHIR R4 transformation s
 
 ### Known Limitations
 
-- **Z-Segments**: Not supported in standard ADT_A01 structure (would require custom message definitions)
-- **Timezone Preservation**: Currently uses system timezone (HL7 timezone offsets not parsed)
 - **Terminology Mapping**: Hardcoded system URLs (future: database-backed configurable mappings)
 
 ### Migration Notes
@@ -134,21 +132,31 @@ This is the initial release. No migration required.
 ---
 
 ## [Unreleased]
-
 ### Planned Features
-- Custom Z-segment support with custom message structures
-- Timezone offset parsing and preservation
-- Database-backed configurable terminology mappings
+- Configurable Terminology: Database-backed system URL mappings
 - Additional resource mappings (MedicationRequest, DiagnosticReport, Immunization)
-- Batch processing endpoints for high-volume scenarios
-- Redis caching layer for terminology lookups
 - GraphQL API for FHIR resources
 - Webhook support for conversion completion notifications
 
 ---
 
+## [1.1.0] - 2026-01-17
+
+### Added
+#### Core Features
+- **Batch Processing API**: `/api/convert/v2-to-fhir-batch` and `/api/convert/fhir-to-v2-batch` for high-volume async processing.
+- **Timezone Preservation**: Full support for HL7 v2.5 timezone offsets (e.g., `-0500`) in `DateTimeUtil`.
+- **Redis Caching Layer**: Caching for Tenant Configuration and Transaction Status lookups.
+
+#### Improvements
+- **Z-Segment Support**: Enhanced `ZPI` segment parsing and mapping to FHIR Extensions.
+- **Performance**: Optimized batch processing with `CompletableFuture`.
+
+---
+
 ## Version History
 
+- **1.1.0** (2026-01-17) - Batch processing, Timezone support, Caching
 - **1.0.0** (2026-01-16) - Initial production release
 
 ---

@@ -41,7 +41,14 @@ A high-performance, secure, and multi-tenant integration service bridging **Lega
 *   **Observability**: Prometheus metrics, Actuator health checks, Audit logging.
 *   **Testing**: 100% test coverage with 110 integration assertions.
 
+
+### 5. **Batch Processing** 📦
+*   **Bulk Operations**: Async batch processing for high-volume data migration.
+*   **Parallel Execution**: Multi-threaded processing using `CompletableFuture`.
+*   **Efficiency**: Optimized for large datasets with detailed success/failure reporting.
+
 ---
+
 
 ## 🏗️ Architecture
 
@@ -205,8 +212,8 @@ newman run postman/FHIR_Transformer.postman_collection.json \
 | **Redis Caching** | ✅ Done | Configs & Auth caching |
 | **Z-Segments** | ✅ Done | Custom `ZPI` support |
 | **Monitoring** | 🚧 Next | Grafana Dashboards |
-| **Batch API** | ⏳ Planned | Bulk NDJSON processing |
+| **Batch API** | ✅ Done | Bulk processing endpoints |
 
 ---
 
-*Documentation Generated: 2026-01-16*
+*Documentation Generated: 2026-01-17*
