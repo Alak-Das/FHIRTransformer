@@ -74,8 +74,12 @@ public final class DateTimeUtil {
             }
 
             // No timezone - use system default
+            String cleanDateTime = hl7DateTime;
+            if (cleanDateTime.length() == 12) {
+                cleanDateTime += "00";
+            }
             LocalDateTime localDateTime = LocalDateTime
-                    .parse(hl7DateTime.substring(0, Math.min(14, hl7DateTime.length())), HL7_DATETIME);
+                    .parse(cleanDateTime.substring(0, Math.min(14, cleanDateTime.length())), HL7_DATETIME);
             return localDateTime.atZone(ZoneId.systemDefault());
 
         } catch (Exception e) {

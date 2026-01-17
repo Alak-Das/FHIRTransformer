@@ -30,6 +30,8 @@ import org.hl7.fhir.r4.model.Procedure;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.RelatedPerson;
 import org.hl7.fhir.r4.model.MedicationRequest;
+import org.hl7.fhir.r4.model.DiagnosticReport;
+import org.hl7.fhir.r4.model.DiagnosticReport.DiagnosticReportStatus;
 import org.hl7.fhir.r4.model.Dosage;
 import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.BooleanType;
@@ -115,6 +117,7 @@ public class Hl7ToFhirService {
 
             // Map Medication segments (RXE, RXO, RXA)
             processMedications(terser, bundle, patient);
+            processDiagnosticReports(terser, bundle, patient);
 
             // Map IN1 segments (Insurance)
             processInsurance(terser, bundle, patientId);
@@ -872,6 +875,106 @@ public class Hl7ToFhirService {
                 }
             } catch (Exception e) {
                 log.error("Error processing " + segmentName + " segments", e);
+            }
+        }
+    }
+
+    private void processDiagnosticReports(Terser terser, Bundle bundle, Patient patient) {
+        log.info("ProcessDiagnosticReports called");
+        int obrIndex = 0;
+        while (true) {
+            try {
+                String obrPath = "/.OBR(" + obrIndex + ")";
+                // Check existence
+                try {
+                    terser.getSegment(obrPath);
+                    log.info("Found OBR segment at {}", obrPath);
+                } catch (Exception e) {
+                    break;
+                }
+
+                if (obrIndex > 50) {
+                    log.warn("Max OBR segments reached");
+                    break;
+                }
+
+                DiagnosticReport report = new DiagnosticReport();
+                report.setId(UUID.randomUUID().toString());
+                report.setSubject(new Reference(patient));
+
+                // OBR-4 Universal Service ID -> Code
+                String code = terser.get(obrPath + "-4-1");
+                String display = terser.get(obrPath + "-4-2");
+                if (code != null) {
+                    CodeableConcept cc = new CodeableConcept();
+                    cc.addCoding().setSystem(MappingConstants.SYSTEM_LOINC).setCode(code).setDisplay(display);
+                    report.setCode(cc);
+                }
+
+                // OBR-7 Observation Date/Time -> EffectiveDateTime
+                String obsDate = terser.get(obrPath + "-7");
+                if (obsDate != null && !obsDate.isEmpty()) {
+                    try {
+                        report.setEffective(DateTimeUtil.hl7DateTimeToFhir(obsDate));
+                    } catch (Exception e) {
+                        log.warn("Failed to parse OBR-7 date: {}", obsDate);
+                    }
+                }
+
+                // OBR-22 Status Change Date/Time -> Issued
+                String issuedDate = terser.get(obrPath + "-22");
+                if (issuedDate != null && !issuedDate.isEmpty()) {
+                    try {
+                        report.setIssued(DateTimeUtil.hl7DateTimeToFhir(issuedDate).getValue());
+                    } catch (Exception e) {
+                        log.warn("Failed to parse OBR-22 date: {}", issuedDate);
+                    }
+                }
+
+                // OBR-25 Result Status -> Status
+                String status = terser.get(obrPath + "-25");
+                if (status != null) {
+                    switch (status) {
+                        case "F":
+                            report.setStatus(DiagnosticReportStatus.FINAL);
+                            break;
+                        case "C":
+                            report.setStatus(DiagnosticReportStatus.CORRECTED);
+                            break;
+                        case "X":
+                            report.setStatus(DiagnosticReportStatus.CANCELLED);
+                            break;
+                        case "P":
+                            report.setStatus(DiagnosticReportStatus.PRELIMINARY);
+                            break;
+                        default:
+                            report.setStatus(DiagnosticReportStatus.FINAL);
+                            break;
+                    }
+                } else {
+                    report.setStatus(DiagnosticReportStatus.FINAL);
+                }
+
+                // OBR-2/3 Identifiers
+                String placerId = terser.get(obrPath + "-2");
+                if (placerId != null) {
+                    report.addIdentifier().setSystem("http://terminology.hl7.org/CodeSystem/v2-0203").setValue(placerId)
+                            .getType().addCoding().setCode("PLAC").setDisplay("Placer Identifier");
+                }
+                String fillerId = terser.get(obrPath + "-3");
+                if (fillerId != null) {
+                    report.addIdentifier().setSystem("http://terminology.hl7.org/CodeSystem/v2-0203").setValue(fillerId)
+                            .getType().addCoding().setCode("FILL").setDisplay("Filler Identifier");
+                }
+
+                bundle.addEntry().setResource(report).getRequest()
+                        .setMethod(Bundle.HTTPVerb.POST)
+                        .setUrl("DiagnosticReport");
+
+                obrIndex++;
+            } catch (Exception e) {
+                log.error("Error processing OBR segment", e);
+                break;
             }
         }
     }

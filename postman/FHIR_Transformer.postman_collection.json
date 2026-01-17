@@ -774,6 +774,75 @@
                     }
                 },
                 {
+                    "name": "Sync ORU^R01 (DiagnosticReport)",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"diagnosticReportId\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "",
+                                    "pm.test(\"Contains DiagnosticReport\", function () {",
+                                    "    var report = jsonData.entry.find(e => e.resource.resourceType === 'DiagnosticReport');",
+                                    "    pm.expect(report).to.not.be.undefined;",
+                                    "    ",
+                                    "    pm.test('DiagnosticReport fields are correct', function() {",
+                                    "        pm.expect(report.resource.status).to.eql('final');",
+                                    "        pm.expect(report.resource.code.coding[0].code).to.eql('24331-1');",
+                                    "        ",
+                                    "        // Dates",
+                                    "        pm.expect(report.resource.effectiveDateTime, 'Missing effectiveDateTime').to.exist;",
+                                    "        pm.expect(report.resource.effectiveDateTime).to.match(/2026-01-17T10:00/);",
+                                    "        ",
+                                    "        pm.expect(report.resource.issued, 'Missing issued').to.exist;",
+                                    "        pm.expect(report.resource.issued).to.match(/2026-01-17T12:00/);",
+                                    "    });",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "text/plain",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "MSH|^~\\&|HIS|RIH|LAB|EkG|199904140038||ORU^R01|{{diagnosticReportId}}|P|2.5\rPID|1||123456||DOE^JANE||19800101|F\rOBR|1|ORDER123^PLACER|FILL456^FILLER|24331-1^LIPID PANEL^LN|||20260117100000|||||||||||||||20260117120000|||F"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "v2-to-fhir-sync"
+                            ]
+                        }
+                    }
+                },
+                {
                     "name": "Sync Bundle (Complex HL7)",
                     "event": [
                         {
