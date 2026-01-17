@@ -5,7 +5,6 @@ import com.fhirtransformer.dto.BatchConversionResponse.ConversionError;
 import com.fhirtransformer.dto.BatchConversionResponse.ConversionResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -13,7 +12,6 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
 /**
  * Service for batch conversion operations with parallel processing.

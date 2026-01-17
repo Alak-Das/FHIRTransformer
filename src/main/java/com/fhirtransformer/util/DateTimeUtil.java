@@ -1,7 +1,5 @@
 package com.fhirtransformer.util;
 
-import org.hl7.fhir.r4.model.DateTimeType;
-
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;

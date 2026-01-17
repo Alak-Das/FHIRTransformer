@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
@@ -39,35 +39,35 @@ import java.time.Duration;
 @EnableCaching
 public class CacheConfig {
 
-    /**
-     * Configure Redis cache manager with JSON serialization.
-     * 
-     * <p>
-     * Configuration:
-     * <ul>
-     * <li>TTL: 1 hour</li>
-     * <li>Key serialization: String</li>
-     * <li>Value serialization: JSON</li>
-     * <li>Null values: Not cached</li>
-     * <li>Transaction aware: Yes</li>
-     * </ul>
-     * 
-     * @param factory Redis connection factory (auto-configured by Spring Boot)
-     * @return Configured cache manager
-     */
-    @Bean
-    public RedisCacheManager cacheManager(RedisConnectionFactory factory) {
-        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofHours(1))
-                .serializeKeysWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(new GenericJackson2JsonRedisSerializer()))
-                .disableCachingNullValues();
+        /**
+         * Configure Redis cache manager with JSON serialization.
+         * 
+         * <p>
+         * Configuration:
+         * <ul>
+         * <li>TTL: 1 hour</li>
+         * <li>Key serialization: String</li>
+         * <li>Value serialization: JSON</li>
+         * <li>Null values: Not cached</li>
+         * <li>Transaction aware: Yes</li>
+         * </ul>
+         * 
+         * @param factory Redis connection factory (auto-configured by Spring Boot)
+         * @return Configured cache manager
+         */
+        @Bean
+        public RedisCacheManager cacheManager(RedisConnectionFactory factory) {
+                RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
+                                .entryTtl(Duration.ofHours(1))
+                                .serializeKeysWith(RedisSerializationContext.SerializationPair
+                                                .fromSerializer(new StringRedisSerializer()))
+                                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                                                .fromSerializer(RedisSerializer.json()))
+                                .disableCachingNullValues();
 
-        return RedisCacheManager.builder(factory)
-                .cacheDefaults(config)
-                .transactionAware()
-                .build();
-    }
+                return RedisCacheManager.builder(factory)
+                                .cacheDefaults(config)
+                                .transactionAware()
+                                .build();
+        }
 }
