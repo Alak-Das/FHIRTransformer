@@ -684,6 +684,96 @@
                     }
                 },
                 {
+                    "name": "Sync ADT^A01 (Patient + Medication)",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"syncRxeId\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Contains MedicationRequest\", function () {",
+                                    "    var medReq = jsonData.entry.find(e => e.resource.resourceType === 'MedicationRequest');",
+                                    "    pm.expect(medReq).to.not.be.undefined;",
+                                    "});",
+                                    "pm.test(\"MedicationRequest has medication code\", function () {",
+                                    "    var medReq = jsonData.entry.find(e => e.resource.resourceType === 'MedicationRequest');",
+                                    "    pm.expect(medReq.resource.medicationCodeableConcept).to.not.be.undefined;",
+                                    "    pm.expect(medReq.resource.medicationCodeableConcept.coding[0].code).to.eql('RX12345');",
+                                    "    pm.expect(medReq.resource.medicationCodeableConcept.coding[0].display).to.eql('Aspirin 81mg');",
+                                    "});",
+                                    "pm.test(\"MedicationRequest has dosage instructions\", function () {",
+                                    "    var medReq = jsonData.entry.find(e => e.resource.resourceType === 'MedicationRequest');",
+                                    "    pm.expect(medReq.resource.dosageInstruction).to.be.an('array');",
+                                    "    pm.expect(medReq.resource.dosageInstruction.length).to.be.above(0);",
+                                    "    pm.expect(medReq.resource.dosageInstruction[0].doseAndRate[0].doseQuantity.value).to.eql(81);",
+                                    "    pm.expect(medReq.resource.dosageInstruction[0].doseAndRate[0].doseQuantity.unit).to.eql('mg');",
+                                    "});",
+                                    "pm.test(\"MedicationRequest has dispense request\", function () {",
+                                    "    var medReq = jsonData.entry.find(e => e.resource.resourceType === 'MedicationRequest');",
+                                    "    pm.expect(medReq.resource.dispenseRequest).to.not.be.undefined;",
+                                    "    pm.expect(medReq.resource.dispenseRequest.quantity.value).to.eql(30);",
+                                    "    pm.expect(medReq.resource.dispenseRequest.numberOfRepeatsAllowed).to.eql(3);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "text/plain",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01|{{syncRxeId}}|P|2.5\rPID|1||104||MEDICATION^TEST||19900101|M\rRXE|1|RX12345^Aspirin 81mg|81||mg||Take with food|||30|tablets|3"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "v2-to-fhir-sync"
+                            ]
+                        }
+                    }
+                },
+                {
                     "name": "Sync Bundle (Complex HL7)",
                     "event": [
                         {
@@ -1962,6 +2052,342 @@
                                     "value": "admin",
                                     "type": "string"
                                 }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Batch Processing (v1.1.0)",
+            "item": [
+                {
+                    "name": "Batch HL7 to FHIR Conversion",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Total messages is 3\", function () {",
+                                    "    pm.expect(jsonData.totalMessages).to.eql(3);",
+                                    "});",
+                                    "pm.test(\"All messages succeeded\", function () {",
+                                    "    pm.expect(jsonData.successCount).to.eql(3);",
+                                    "    pm.expect(jsonData.failureCount).to.eql(0);",
+                                    "});",
+                                    "pm.test(\"Contains results array\", function () {",
+                                    "    pm.expect(jsonData.results).to.be.an('array');",
+                                    "    pm.expect(jsonData.results).to.have.lengthOf(3);",
+                                    "});",
+                                    "pm.test(\"Each result has processing time\", function () {",
+                                    "    jsonData.results.forEach(result => {",
+                                    "        pm.expect(result.processingTimeMs).to.be.above(0);",
+                                    "    });",
+                                    "});",
+                                    "pm.test(\"Processing completed in reasonable time\", function () {",
+                                    "    pm.expect(jsonData.processingTimeMs).to.be.below(5000);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"messages\": [\n    \"MSH|^~\\\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01|BATCH-001|P|2.5\\rPID|1||100||DOE^JOHN||19700101|M\",\n    \"MSH|^~\\\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01|BATCH-002|P|2.5\\rPID|1||101||DOE^JANE||19800101|F\",\n    \"MSH|^~\\\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A08|BATCH-003|P|2.5\\rPID|1||102||SMITH^ALEX||19900101|M\"\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/v2-to-fhir-batch",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "v2-to-fhir-batch"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Batch FHIR to HL7 Conversion",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Total messages is 2\", function () {",
+                                    "    pm.expect(jsonData.totalMessages).to.eql(2);",
+                                    "});",
+                                    "pm.test(\"All messages succeeded\", function () {",
+                                    "    pm.expect(jsonData.successCount).to.eql(2);",
+                                    "    pm.expect(jsonData.failureCount).to.eql(0);",
+                                    "});",
+                                    "pm.test(\"Results contain HL7 messages\", function () {",
+                                    "    pm.expect(jsonData.results).to.be.an('array');",
+                                    "    pm.expect(jsonData.results[0].output).to.include('MSH');",
+                                    "    pm.expect(jsonData.results[0].output).to.include('PID');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "[\n  \"{\\\"resourceType\\\":\\\"Bundle\\\",\\\"id\\\":\\\"batch-fhir-1\\\",\\\"type\\\":\\\"transaction\\\",\\\"entry\\\":[{\\\"resource\\\":{\\\"resourceType\\\":\\\"Patient\\\",\\\"id\\\":\\\"pat-batch-1\\\",\\\"name\\\":[{\\\"family\\\":\\\"BATCH\\\",\\\"given\\\":[\\\"TEST1\\\"]}]}}]}\",\n  \"{\\\"resourceType\\\":\\\"Bundle\\\",\\\"id\\\":\\\"batch-fhir-2\\\",\\\"type\\\":\\\"transaction\\\",\\\"entry\\\":[{\\\"resource\\\":{\\\"resourceType\\\":\\\"Patient\\\",\\\"id\\\":\\\"pat-batch-2\\\",\\\"name\\\":[{\\\"family\\\":\\\"BATCH\\\",\\\"given\\\":[\\\"TEST2\\\"]}]}}]}\"\n]"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/fhir-to-v2-batch",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "fhir-to-v2-batch"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Z-Segment Support (v1.1.0)",
+            "item": [
+                {
+                    "name": "Sync ADT^A01 with ZPI Segment",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"zpiTestId\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Contains Patient\", function () {",
+                                    "    var patient = jsonData.entry.find(e => e.resource.resourceType === 'Patient');",
+                                    "    pm.expect(patient).to.not.be.undefined;",
+                                    "});",
+                                    "pm.test(\"Patient has ZPI extensions\", function () {",
+                                    "    var patient = jsonData.entry.find(e => e.resource.resourceType === 'Patient');",
+                                    "    var extensions = patient.resource.extension || [];",
+                                    "    pm.expect(extensions.length).to.be.above(0);",
+                                    "});",
+                                    "pm.test(\"Pet Name extension exists\", function () {",
+                                    "    var patient = jsonData.entry.find(e => e.resource.resourceType === 'Patient');",
+                                    "    var petNameExt = patient.resource.extension.find(ext => ext.url.includes('pet-name'));",
+                                    "    pm.expect(petNameExt).to.not.be.undefined;",
+                                    "    pm.expect(petNameExt.valueString).to.eql('Fluffy');",
+                                    "});",
+                                    "pm.test(\"VIP Level extension exists\", function () {",
+                                    "    var patient = jsonData.entry.find(e => e.resource.resourceType === 'Patient');",
+                                    "    var vipExt = patient.resource.extension.find(ext => ext.url.includes('vip-level'));",
+                                    "    pm.expect(vipExt).to.not.be.undefined;",
+                                    "    pm.expect(vipExt.valueString).to.eql('VIP-Gold');",
+                                    "});",
+                                    "pm.test(\"Archive Status extension exists\", function () {",
+                                    "    var patient = jsonData.entry.find(e => e.resource.resourceType === 'Patient');",
+                                    "    var archiveExt = patient.resource.extension.find(ext => ext.url.includes('archive-status'));",
+                                    "    pm.expect(archiveExt).to.not.be.undefined;",
+                                    "    pm.expect(archiveExt.valueString).to.eql('Active');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "text/plain",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01|{{zpiTestId}}|P|2.5\rPID|1||200||PETOWNER^JANE||19850101|F\rZPI|1|Fluffy|VIP-Gold|Active"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "v2-to-fhir-sync"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Timezone Preservation (v1.1.0)",
+            "item": [
+                {
+                    "name": "Sync ADT^A01 with Timezone Offset",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"tzTestId\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Contains Patient with birthDate\", function () {",
+                                    "    var patient = jsonData.entry.find(e => e.resource.resourceType === 'Patient');",
+                                    "    pm.expect(patient).to.not.be.undefined;",
+                                    "    pm.expect(patient.resource.birthDate).to.eql('1990-05-15');",
+                                    "});",
+                                    "pm.test(\"Contains Observation with effectiveDateTime\", function () {",
+                                    "    var obs = jsonData.entry.find(e => e.resource.resourceType === 'Observation');",
+                                    "    pm.expect(obs).to.not.be.undefined;",
+                                    "    pm.expect(obs.resource.effectiveDateTime).to.not.be.undefined;",
+                                    "});",
+                                    "pm.test(\"Timezone is preserved in effectiveDateTime\", function () {",
+                                    "    var obs = jsonData.entry.find(e => e.resource.resourceType === 'Observation');",
+                                    "    // Check that the datetime includes timezone offset",
+                                    "    pm.expect(obs.resource.effectiveDateTime).to.match(/[+-]\\d{2}:\\d{2}|Z/);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "text/plain",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01|{{tzTestId}}|P|2.5\rPID|1||300||TIMEZONE^TEST||19900515|M\rOBX|1|NM|8867-4^Heart rate^LN||75|/min|||||F|||20260117143000-0500"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "v2-to-fhir-sync"
                             ]
                         }
                     }

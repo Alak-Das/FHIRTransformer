@@ -47,4 +47,24 @@ public class Hl7ToFhirServiceTest {
         assertTrue(fhir.contains("http://example.org/fhir/StructureDefinition/pet-name"),
                 "Should contain extension URL");
     }
+
+    @Test
+    public void testMedicationConversion() throws Exception {
+        // HL7 with RXE segment
+        String hl7 = "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01|MSG001|P|2.5\r" +
+                "PID|1||104||MEDICATION^TEST||19900101|M\r" +
+                "RXE|1||RX12345^Aspirin 81mg||81||mg||Take with food||30|tablets|3";
+
+        String fhir = hl7ToFhirService.convertHl7ToFhir(hl7);
+
+        System.out.println("Medication Test Result: " + fhir);
+        assertNotNull(fhir);
+        assertTrue(fhir.contains("MedicationRequest"), "Should contain MedicationRequest resource");
+        assertTrue(fhir.contains("RX12345"), "Should contain Medication Code");
+        assertTrue(fhir.contains("Aspirin 81mg"), "Should contain Medication Name");
+        assertTrue(fhir.contains("\"value\": 81"), "Should contain Dose Amount");
+        assertTrue(fhir.contains("Take with food"), "Should contain Instructions");
+        assertTrue(fhir.contains("\"value\": 30"), "Should contain Dispense Amount");
+        assertTrue(fhir.contains("\"numberOfRepeatsAllowed\": 3"), "Should contain Refills");
+    }
 }

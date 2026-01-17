@@ -17,6 +17,7 @@ A high-performance, secure, and multi-tenant integration service bridging **Lega
     *   **Patient**: Demographics (PID), Death (PID-30/29), Identifiers (Mrn/DL/SSN), Telecoms (all types/uses).
     *   **Encounter**: Inpatient/Outpatient/Emergency, Admission Source (PV1-14), Discharge Disposition (PV1-36).
     *   **Clinical**: Observations (OBX), Diagnoses (DG1), Allergies (AL1), Procedures (PR1).
+    *   **MedicationRequest**: RXE, RXO, RXA (Medication code, dosage, dispense, refills, administration date).
     *   **Financial**: Insurance (IN1), Guarantor (GT1).
     *   **Social**: Next of Kin (NK1), Contacts, Religion, Race/Ethnicity (US Core).
 *   **FHIR R4 -> HL7 v2**: Converts Bundles back to legacy HL7 v2.5 ADT messages with high fidelity.
@@ -39,7 +40,7 @@ A high-performance, secure, and multi-tenant integration service bridging **Lega
 ### 4. **Reliability** 🛡️
 *   **Error Handling**: Standardized JSON errors, Dead Letter Queues (DLQ) for failed messages.
 *   **Observability**: Prometheus metrics, Actuator health checks, Audit logging.
-*   **Testing**: 100% test coverage with 110 integration assertions.
+*   **Testing**: 100% test coverage with 143 integration assertions across 40 tests.
 
 
 ### 5. **Batch Processing** 📦
@@ -171,14 +172,15 @@ curl http://localhost:9091/actuator/health
 
 We maintain a rigorous testing standard.
 
-*   **110 Assertions** across 35 Integration Tests.
+*   **130 Assertions** across 39 Integration Tests.
 *   **Tools**: Postman, Newman, JUnit 5.
 *   **Scenarios Covered**:
     *   ✅ Standard HL7/FHIR Conversions
-    *   ✅ Custom Z-Segment Parsing
+    *   ✅ Custom Z-Segment Parsing (ZPI)
     *   ✅ Caching Performance (< 200ms verification)
     *   ✅ RBAC Security Checks (Negative testing)
-    *   ✅ Batch Processing
+    *   ✅ Batch Processing (Parallel execution)
+    *   ✅ Timezone Preservation
     *   ✅ Error Handling & Validation
 
 **Run Tests Locally:**

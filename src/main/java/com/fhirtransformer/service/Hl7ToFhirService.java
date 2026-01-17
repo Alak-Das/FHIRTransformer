@@ -7,6 +7,7 @@ import ca.uhn.hl7v2.parser.Parser;
 import ca.uhn.hl7v2.util.Terser;
 import com.fhirtransformer.config.TenantContext;
 import com.fhirtransformer.util.MappingConstants;
+import com.fhirtransformer.util.DateTimeUtil;
 import org.hl7.fhir.r4.model.Address;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CodeableConcept;
@@ -28,6 +29,8 @@ import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.Procedure;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.RelatedPerson;
+import org.hl7.fhir.r4.model.MedicationRequest;
+import org.hl7.fhir.r4.model.Dosage;
 import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.BooleanType;
 import org.hl7.fhir.r4.model.DateTimeType;
@@ -109,6 +112,9 @@ public class Hl7ToFhirService {
 
             // Map AL1 segments (Allergies)
             processAllergies(terser, bundle, patientId);
+
+            // Map Medication segments (RXE, RXO, RXA)
+            processMedications(terser, bundle, patient);
 
             // Map IN1 segments (Insurance)
             processInsurance(terser, bundle, patientId);
@@ -645,6 +651,204 @@ public class Hl7ToFhirService {
                 al1Index++;
             } catch (Exception e) {
                 break;
+            }
+        }
+    }
+
+    private void processMedications(Terser terser, Bundle bundle, Patient patient) {
+        // HL7 v2.5 Pharmacy/Treatment segments: RXE, RXO, RXA
+        String[] medSegments = { "RXE", "RXO", "RXA" };
+
+        for (String segmentName : medSegments) {
+            try {
+                int segmentCount = -1;
+                while (true) {
+                    segmentCount++;
+                    String segmentPath = segmentName + "(" + segmentCount + ")";
+                    try {
+                        terser.getSegment(segmentPath);
+                    } catch (Exception e) {
+                        break; // No more segments of this type
+                    }
+
+                    log.debug("Processing medication group {}", segmentPath);
+
+                    MedicationRequest medRequest = new MedicationRequest();
+                    medRequest.setId(UUID.randomUUID().toString());
+                    medRequest.setStatus(MedicationRequest.MedicationRequestStatus.ACTIVE);
+                    medRequest.setIntent(MedicationRequest.MedicationRequestIntent.ORDER);
+                    medRequest.setSubject(new Reference(patient));
+
+                    // Map Medication Code
+                    String code = null;
+                    String display = null;
+                    String system = "http://www.nlm.nih.gov/research/umls/rxnorm"; // Default to RxNorm
+
+                    if ("RXE".equals(segmentName)) {
+                        code = terser.get(segmentPath + "-2-1");
+                        display = terser.get(segmentPath + "-2-2");
+                    } else if ("RXO".equals(segmentName)) {
+                        code = terser.get(segmentPath + "-1-1");
+                        display = terser.get(segmentPath + "-1-2");
+                    } else if ("RXA".equals(segmentName)) {
+                        code = terser.get(segmentPath + "-5-1");
+                        display = terser.get(segmentPath + "-5-2");
+                        medRequest.setStatus(MedicationRequest.MedicationRequestStatus.COMPLETED);
+
+                        // Authored On (Administration Date)
+                        String adminDate = terser.get(segmentPath + "-3");
+                        if (adminDate != null && !adminDate.isEmpty()) {
+                            try {
+                                medRequest.setAuthoredOn(DateTimeUtil.hl7DateTimeToFhir(adminDate).getValue());
+                            } catch (Exception e) {
+                                log.warn("Failed to parse administration date: {}", adminDate);
+                            }
+                        }
+                    }
+
+                    if (code != null) {
+                        CodeableConcept medication = new CodeableConcept();
+                        Coding coding = new Coding();
+                        coding.setSystem(system);
+                        coding.setCode(code);
+                        if (display != null)
+                            coding.setDisplay(display);
+                        medication.addCoding(coding);
+                        medRequest.setMedication(medication);
+                    }
+
+                    // Dosage Instructions
+                    Dosage dosage = new Dosage();
+                    boolean hasDosageData = false;
+
+                    if ("RXE".equals(segmentName)) {
+                        String doseAmount = terser.get(segmentPath + "-3");
+                        String doseUnits = terser.get(segmentPath + "-5-1"); // CE.identifier
+
+                        if (doseAmount != null && doseUnits != null) {
+                            try {
+                                Quantity doseQuantity = new Quantity();
+                                doseQuantity.setValue(Double.parseDouble(doseAmount));
+                                doseQuantity.setUnit(doseUnits);
+                                doseQuantity.setSystem("http://unitsofmeasure.org");
+                                var doseAndRate = dosage.addDoseAndRate();
+                                doseAndRate.setDose(doseQuantity);
+                                hasDosageData = true;
+                            } catch (NumberFormatException e) {
+                                log.warn("Could not parse dose amount: {}", doseAmount);
+                            }
+                        }
+
+                        // RXE-7 Provider's Administration Instructions
+                        String instructions = terser.get(segmentPath + "-7-2"); // CE.text
+                        if (instructions != null && !instructions.isEmpty()) {
+                            dosage.setText(instructions);
+                            hasDosageData = true;
+                        }
+
+                        // RXE-21 Give Rate Amount
+                        String rateAmount = terser.get(segmentPath + "-21");
+                        // RXE-22 Give Rate Units
+                        String rateUnits = terser.get(segmentPath + "-22-1");
+                        if (rateAmount != null && rateUnits != null) {
+                            try {
+                                Quantity rateQuantity = new Quantity();
+                                rateQuantity.setValue(Double.parseDouble(rateAmount));
+                                rateQuantity.setUnit(rateUnits);
+                                var rateComp = dosage.addDoseAndRate(); // This might create a second component if dose
+                                                                        // was already set, simplified for now
+                                rateComp.setRate(rateQuantity);
+                                hasDosageData = true;
+                            } catch (NumberFormatException e) {
+                                log.warn("Could not parse rate amount: {}", rateAmount);
+                            }
+                        }
+
+                        // RXE-10 Dispense Amount
+                        String dispenseAmount = terser.get(segmentPath + "-10");
+                        // RXE-11 Dispense Units
+                        String dispenseUnits = terser.get(segmentPath + "-11-1");
+                        // RXE-12 Number of Refills
+                        String refills = terser.get(segmentPath + "-12");
+
+                        if ((dispenseAmount != null && !dispenseAmount.isEmpty())
+                                || (refills != null && !refills.isEmpty())) {
+                            MedicationRequest.MedicationRequestDispenseRequestComponent dispenseRequest = new MedicationRequest.MedicationRequestDispenseRequestComponent();
+
+                            if (dispenseAmount != null) {
+                                try {
+                                    Quantity quantity = new Quantity();
+                                    quantity.setValue(Double.parseDouble(dispenseAmount));
+                                    if (dispenseUnits != null)
+                                        quantity.setUnit(dispenseUnits);
+                                    dispenseRequest.setQuantity(quantity);
+                                } catch (NumberFormatException e) {
+                                    log.warn("Could not parse dispense amount: {}", dispenseAmount);
+                                }
+                            }
+
+                            if (refills != null) {
+                                try {
+                                    dispenseRequest.setNumberOfRepeatsAllowed(Integer.parseInt(refills));
+                                } catch (NumberFormatException e) {
+                                    log.warn("Could not parse refills: {}", refills);
+                                }
+                            }
+                            medRequest.setDispenseRequest(dispenseRequest);
+                        }
+
+                    } else if ("RXO".equals(segmentName)) {
+                        String doseAmount = terser.get(segmentPath + "-2");
+                        String doseUnits = terser.get(segmentPath + "-4-1");
+
+                        if (doseAmount != null && doseUnits != null) {
+                            try {
+                                Quantity doseQuantity = new Quantity();
+                                doseQuantity.setValue(Double.parseDouble(doseAmount));
+                                doseQuantity.setUnit(doseUnits);
+                                var doseAndRate = dosage.addDoseAndRate();
+                                doseAndRate.setDose(doseQuantity);
+                                hasDosageData = true;
+                            } catch (NumberFormatException e) {
+                                log.warn("Could not parse RXO dose amount: {}", doseAmount);
+                            }
+                        }
+                    } else if ("RXA".equals(segmentName)) {
+                        String doseAmount = terser.get(segmentPath + "-6");
+                        String doseUnits = terser.get(segmentPath + "-7-1");
+                        String dosageForm = terser.get(segmentPath + "-8-2"); // Text description
+
+                        if (doseAmount != null && doseUnits != null) {
+                            try {
+                                Quantity doseQuantity = new Quantity();
+                                doseQuantity.setValue(Double.parseDouble(doseAmount));
+                                doseQuantity.setUnit(doseUnits);
+                                var doseAndRate = dosage.addDoseAndRate();
+                                doseAndRate.setDose(doseQuantity);
+                                hasDosageData = true;
+                            } catch (NumberFormatException e) {
+                                log.warn("Could not parse RXA dose amount: {}", doseAmount);
+                            }
+                        }
+
+                        if (dosageForm != null && !dosageForm.isEmpty()) {
+                            dosage.setText(dosageForm);
+                            hasDosageData = true;
+                        }
+                    }
+
+                    if (hasDosageData) {
+                        medRequest.addDosageInstruction(dosage);
+                    }
+
+                    bundle.addEntry().setResource(medRequest).getRequest()
+                            .setMethod(Bundle.HTTPVerb.POST)
+                            .setUrl("MedicationRequest");
+
+                    log.debug("Mapped MedicationRequest: {}", medRequest.getId());
+                }
+            } catch (Exception e) {
+                log.error("Error processing " + segmentName + " segments", e);
             }
         }
     }

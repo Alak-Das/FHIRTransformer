@@ -2,7 +2,7 @@
 
 **Current Version**: 1.0.0 (Production Ready)  
 **Status**: ✅ All core features complete, 100% test coverage  
-**Last Updated**: 2026-01-17
+**Last Updated**: 2026-01-18
 
 ---
 
@@ -82,7 +82,7 @@ public class TerminologyService {
 
 **Proposed Additions**:
 
-#### **MedicationRequest ↔ RXE/RXO**
+#### **MedicationRequest ↔ RXE/RXO** (✅ Completed v1.2.0)
 ```java
 // HL7 RXE (Pharmacy/Treatment Encoded Order)
 RXE rxe = message.getRXE();
@@ -564,13 +564,9 @@ jobs:
 
 ```
 High Impact, Low Effort (Quick Wins):
-├─ Timezone Offset Preservation
-├─ Batch Processing Endpoints
-├─ Redis Caching Layer
 └─ Distributed Tracing
 
 High Impact, Medium Effort (Strategic):
-├─ Custom Z-Segment Support
 ├─ Database-Backed Terminology
 ├─ Additional Resource Mappings
 └─ Webhook Support
@@ -586,29 +582,36 @@ Medium Impact (Nice-to-Have):
 ├─ Custom Grafana Dashboards
 ├─ Contract Testing
 └─ Performance Testing
+
+✅ COMPLETED (v1.1.0):
+├─ Timezone Offset Preservation
+├─ Batch Processing Endpoints
+├─ Redis Caching Layer
+└─ Custom Z-Segment Support
+└─ MedicationRequest Mapping
 ```
 
 ---
 
 ## 🎯 Recommended Next Steps
 
-### Phase 1 (Next 1-2 months)
-1. ✅ Timezone Offset Preservation (1 week)
-2. ✅ Batch Processing Endpoints (1 week)
-3. ✅ Redis Caching Layer (1 week)
-4. [ ] Custom Grafana Dashboards (1 week)
+### Phase 1 (Next 1-2 months) - ✅ COMPLETED
+1. ✅ Timezone Offset Preservation (1 week) - DONE v1.1.0
+2. ✅ Batch Processing Endpoints (1 week) - DONE v1.1.0
+3. ✅ Redis Caching Layer (1 week) - DONE v1.0.0
+4. ✅ Custom Z-Segment Support (2-3 weeks) - DONE v1.0.0
 
-### Phase 2 (Next 3-6 months)
-1. ✅ Custom Z-Segment Support (2-3 weeks)
-2. ✅ Database-Backed Terminology (2 weeks)
-3. ✅ MedicationRequest Mapping (2 weeks)
-4. ✅ Webhook Support (2 weeks)
+### Phase 2 (Next 3-6 months) - CURRENT FOCUS
+1. [ ] Custom Grafana Dashboards (1 week)
+2. [ ] Database-Backed Terminology (2 weeks)
+3. ✅ MedicationRequest Mapping (2 weeks) - DONE v1.2.0
+4. [ ] Webhook Support (2 weeks)
 
 ### Phase 3 (Next 6-12 months)
-1. ✅ OAuth 2.0 / SMART on FHIR (3-4 weeks)
-2. ✅ Kubernetes Deployment (2 weeks)
-3. ✅ CI/CD Pipeline (2 weeks)
-4. ✅ DiagnosticReport Mapping (2 weeks)
+1. [ ] OAuth 2.0 / SMART on FHIR (3-4 weeks)
+2. [ ] Kubernetes Deployment (2 weeks)
+3. [ ] CI/CD Pipeline (2 weeks)
+4. [ ] DiagnosticReport Mapping (2 weeks)
 
 ---
 
