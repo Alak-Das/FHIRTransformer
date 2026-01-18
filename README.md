@@ -8,7 +8,7 @@
 
 A high-performance, secure, and multi-tenant integration service bridging **Legacy HL7 v2** systems and Modern **FHIR R4** healthcare standards. Built for reliability and scalability using Spring Boot 4.0, MongoDB, Redis, and RabbitMQ.
 
-**Current Version**: 1.4.0 (Enhanced Clinical Suite)  
+**Current Version**: 1.5.0 (Refactored Architecture)  
 **Status**: ✅ All core features complete, 100% test coverage  
 **Last Updated**: 2026-01-18
 
@@ -144,6 +144,11 @@ Full support for scheduling, vaccinations, and order requests.
 ---
 
 ## 📜 Release History
+
+### [1.5.0] - 2026-01-18
+- **Refactoring**: Modularized `Hl7ToFhirService` using Strategy Pattern.
+- **Components**: Extracted `Patient`, `Encounter`, `Observation`, and `Allergy` logic into dedicated converters.
+- **Architecture**: Improved maintainability and testability with `SegmentConverter` interface.
 
 ### [1.4.0] - 2026-01-18
 - **Clinical Suite**: Added full mapping for `Immunization`, `Appointment`, and `ServiceRequest`.
