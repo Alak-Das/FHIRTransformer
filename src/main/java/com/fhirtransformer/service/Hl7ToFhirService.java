@@ -8,6 +8,7 @@ import ca.uhn.hl7v2.util.Terser;
 import com.fhirtransformer.config.TenantContext;
 import com.fhirtransformer.util.MappingConstants;
 import com.fhirtransformer.util.DateTimeUtil;
+import com.fhirtransformer.service.converter.*;
 import org.hl7.fhir.r4.model.Address;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CodeableConcept;
@@ -31,7 +32,7 @@ import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.RelatedPerson;
 import org.hl7.fhir.r4.model.MedicationRequest;
 import org.hl7.fhir.r4.model.DiagnosticReport;
-import ca.uhn.hl7v2.model.Segment;
+
 import org.hl7.fhir.r4.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -51,14 +52,24 @@ public class Hl7ToFhirService {
     private final FhirContext fhirContext;
     private final FhirValidationService fhirValidationService;
     private final MeterRegistry meterRegistry;
+    private final PatientConverter patientConverter;
+    private final EncounterConverter encounterConverter;
+    private final ObservationConverter observationConverter;
+    private final AllergyConverter allergyConverter;
 
     @Autowired
     public Hl7ToFhirService(FhirValidationService fhirValidationService, FhirContext fhirContext,
-            HapiContext hapiContext, MeterRegistry meterRegistry) {
+            HapiContext hapiContext, MeterRegistry meterRegistry,
+            PatientConverter patientConverter, EncounterConverter encounterConverter,
+            ObservationConverter observationConverter, AllergyConverter allergyConverter) {
         this.hl7Context = hapiContext;
         this.fhirContext = fhirContext;
         this.fhirValidationService = fhirValidationService;
         this.meterRegistry = meterRegistry;
+        this.patientConverter = patientConverter;
+        this.encounterConverter = encounterConverter;
+        this.observationConverter = observationConverter;
+        this.allergyConverter = allergyConverter;
     }
 
     public String convertHl7ToFhir(String hl7Message) throws Exception {
@@ -91,24 +102,46 @@ public class Hl7ToFhirService {
 
             log.info("Starting HL7 to FHIR conversion for transaction: {}", msh10);
 
+            String patientId = UUID.randomUUID().toString();
+            ConversionContext context = ConversionContext.builder()
+                    .patientId(patientId)
+                    .hapiMessage(hapiMsg)
+                    .build();
+
             // Extract Patient Data
-            Patient patient = processPatient(terser, bundle, hapiMsg);
-            String patientId = patient.getIdElement().getIdPart();
+            List<Patient> patients = patientConverter.convert(terser, bundle, context);
+            Patient patient = null;
+            if (!patients.isEmpty()) {
+                patient = patients.get(0);
+                bundle.addEntry().setResource(patient).getRequest().setMethod(Bundle.HTTPVerb.POST).setUrl("Patient");
+            } else {
+                log.error("Patient conversion failed to return a resource");
+            }
 
             // Map Next of Kin (NK1)
             processNextOfKin(terser, bundle, patientId);
 
             // Map Encounter Data
-            processEncounter(terser, bundle, patientId);
+            List<Encounter> encounters = encounterConverter.convert(terser, bundle, context);
+            for (Encounter enc : encounters) {
+                bundle.addEntry().setResource(enc).getRequest().setMethod(Bundle.HTTPVerb.POST).setUrl("Encounter");
+            }
 
             // Map OBX segments (Observations)
-            processObservations(terser, bundle, patientId);
+            List<Observation> observations = observationConverter.convert(terser, bundle, context);
+            for (Observation obs : observations) {
+                bundle.addEntry().setResource(obs).getRequest().setMethod(Bundle.HTTPVerb.POST).setUrl("Observation");
+            }
 
             // Map DG1 segments (Conditions)
             processConditions(terser, bundle, patientId);
 
             // Map AL1 segments (Allergies)
-            processAllergies(terser, bundle, patientId);
+            List<AllergyIntolerance> allergies = allergyConverter.convert(terser, bundle, context);
+            for (AllergyIntolerance allergy : allergies) {
+                bundle.addEntry().setResource(allergy).getRequest().setMethod(Bundle.HTTPVerb.POST)
+                        .setUrl("AllergyIntolerance");
+            }
 
             // Map Medication segments (RXE, RXO, RXA)
             processMedications(terser, bundle, patient);
@@ -155,376 +188,6 @@ public class Hl7ToFhirService {
         }
     }
 
-    private Patient processPatient(Terser terser, Bundle bundle, Message hapiMsg) throws Exception {
-        log.debug("Processing Patient segment...");
-        Patient patient = new Patient();
-        String patientId = UUID.randomUUID().toString();
-        patient.setId(patientId);
-
-        // PID-3 Patient Identifiers (Repeating)
-        int idIndex = 0;
-        while (true) {
-            String pid3_1 = terser.get("/.PID-3(" + idIndex + ")-1");
-            if (pid3_1 == null)
-                break;
-            String pid3_4 = terser.get("/.PID-3(" + idIndex + ")-4"); // Assigning Authority
-            String pid3_5 = terser.get("/.PID-3(" + idIndex + ")-5"); // Identifier Type Code
-
-            Identifier identifier = patient.addIdentifier().setValue(pid3_1);
-            if (pid3_4 != null)
-                identifier.setSystem("urn:oid:" + pid3_4);
-            else
-                identifier.setSystem(MappingConstants.SYSTEM_PATIENT_IDENTIFIER);
-
-            if (pid3_5 != null) {
-                identifier.getType().addCoding().setSystem("http://terminology.hl7.org/CodeSystem/v2-0203")
-                        .setCode(pid3_5);
-                if ("MR".equals(pid3_5)) {
-                    identifier.setUse(Identifier.IdentifierUse.OFFICIAL);
-                }
-            }
-            idIndex++;
-        }
-
-        // PID-5 Patient Names (Repeating)
-        int nameIndex = 0;
-        while (true) {
-            String familyName = terser.get("/.PID-5(" + nameIndex + ")-1");
-            String givenName = terser.get("/.PID-5(" + nameIndex + ")-2");
-            if (familyName == null && givenName == null)
-                break;
-
-            HumanName name = patient.addName().setFamily(familyName);
-            if (givenName != null)
-                name.addGiven(givenName);
-
-            String middleName = terser.get("/.PID-5(" + nameIndex + ")-3");
-            if (middleName != null)
-                name.addGiven(middleName);
-
-            String suffix = terser.get("/.PID-5(" + nameIndex + ")-4");
-            if (suffix != null)
-                name.addSuffix(suffix);
-
-            String prefix = terser.get("/.PID-5(" + nameIndex + ")-5");
-            if (prefix != null)
-                name.addPrefix(prefix);
-
-            String nameType = terser.get("/.PID-5(" + nameIndex + ")-7");
-            if (nameType != null) {
-                try {
-                    name.setUse(HumanName.NameUse.fromCode(nameType.toLowerCase()));
-                } catch (Exception e) {
-                }
-            }
-            nameIndex++;
-        }
-
-        String gender = terser.get("/.PID-8");
-        if ("M".equalsIgnoreCase(gender)) {
-            patient.setGender(Enumerations.AdministrativeGender.MALE);
-        } else if ("F".equalsIgnoreCase(gender)) {
-            patient.setGender(Enumerations.AdministrativeGender.FEMALE);
-        } else if ("O".equalsIgnoreCase(gender)) {
-            patient.setGender(Enumerations.AdministrativeGender.OTHER);
-        } else {
-            patient.setGender(Enumerations.AdministrativeGender.UNKNOWN);
-        }
-
-        String dob = terser.get("/.PID-7");
-        if (dob != null && !dob.isEmpty()) {
-            patient.setBirthDate(parseHl7Date(dob));
-        }
-
-        // PID-10 Race
-        String race = terser.get("/.PID-10-1");
-        String raceText = terser.get("/.PID-10-2");
-        if (race != null) {
-            Extension ext = patient.addExtension();
-            ext.setUrl("http://hl7.org/fhir/us/core/StructureDefinition/us-core-race");
-            ext.addExtension().setUrl("ombCategory")
-                    .setValue(new Coding().setSystem(MappingConstants.SYSTEM_RACE).setCode(race).setDisplay(raceText));
-        }
-
-        // PID-16 Marital Status
-        String maritalStatus = terser.get("/.PID-16-1");
-        if (maritalStatus != null) {
-            patient.getMaritalStatus().addCoding().setSystem(MappingConstants.SYSTEM_V2_MARITAL_STATUS)
-                    .setCode(maritalStatus).setDisplay(terser.get("/.PID-16-2"));
-        }
-
-        // PID-17 Religion
-        String religion = terser.get("/.PID-17-1");
-        if (religion != null) {
-            patient.addExtension().setUrl("http://hl7.org/fhir/StructureDefinition/patient-religion")
-                    .setValue(new CodeableConcept().addCoding().setSystem(MappingConstants.SYSTEM_RELIGION)
-                            .setCode(religion).setDisplay(terser.get("/.PID-17-2")));
-        }
-
-        // PID-22 Ethnic Group
-        String ethnicity = terser.get("/.PID-22-1");
-        String ethText = terser.get("/.PID-22-2");
-        if (ethnicity != null) {
-            Extension ext = patient.addExtension();
-            ext.setUrl("http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity");
-            ext.addExtension().setUrl("ombCategory")
-                    .setValue(new Coding().setSystem(MappingConstants.SYSTEM_ETHNICITY).setCode(ethnicity)
-                            .setDisplay(ethText));
-        }
-
-        // PID-29/30 Death Details
-        String deceased = terser.get("/.PID-29");
-        if ("Y".equalsIgnoreCase(deceased)) {
-            patient.setDeceased(new BooleanType(true));
-            String deathDate = terser.get("/.PID-30");
-            if (deathDate != null && !deathDate.isEmpty()) {
-                patient.setDeceased(new DateTimeType(parseHl7Date(deathDate)));
-            }
-        }
-
-        // PD1-4 Primary Care Provider
-        String pcpId = terser.get("/.PD1-4-1");
-        String pcpName = terser.get("/.PD1-4-2");
-        log.info("DEBUG: PD1-4-1='{}', PD1-4-2='{}'", pcpId, pcpName);
-        if (pcpId != null || pcpName != null) {
-            Reference gp = patient.addGeneralPractitioner();
-            if (pcpId != null)
-                gp.setReference("Practitioner/" + pcpId);
-            if (pcpName != null)
-                gp.setDisplay(pcpName);
-            else if (pcpId != null && pcpId.length() > 5)
-                gp.setDisplay(pcpId);
-            log.info("DEBUG: Added GeneralPractitioner: ref='{}', display='{}'", gp.getReference(), gp.getDisplay());
-        }
-
-        // PID-11 Addresses (Repeating)
-        int addrIndex = 0;
-        while (true) {
-            String street = terser.get("/.PID-11(" + addrIndex + ")-1");
-            String city = terser.get("/.PID-11(" + addrIndex + ")-3");
-            if (street == null && city == null)
-                break;
-
-            Address address = patient.addAddress();
-            if (street != null)
-                address.addLine(street);
-            String otherLine = terser.get("/.PID-11(" + addrIndex + ")-2");
-            if (otherLine != null)
-                address.addLine(otherLine);
-
-            address.setCity(city);
-            address.setState(terser.get("/.PID-11(" + addrIndex + ")-4"));
-            address.setPostalCode(terser.get("/.PID-11(" + addrIndex + ")-5"));
-            address.setCountry(terser.get("/.PID-11(" + addrIndex + ")-6"));
-
-            String type = terser.get("/.PID-11(" + addrIndex + ")-7");
-            if (type != null) {
-                if ("H".equals(type))
-                    address.setUse(Address.AddressUse.HOME);
-                else if ("O".equals(type) || "B".equals(type))
-                    address.setUse(Address.AddressUse.WORK);
-            }
-            addrIndex++;
-        }
-
-        // PID-13/14 Telecom
-        processTelecom(terser, "/.PID-13", patient, ContactPoint.ContactPointUse.HOME);
-        processTelecom(terser, "/.PID-14", patient, ContactPoint.ContactPointUse.WORK);
-
-        // Z-Segment Processing
-        processZSegments(terser, hapiMsg, patient);
-
-        bundle.addEntry().setResource(patient).getRequest().setMethod(Bundle.HTTPVerb.POST).setUrl("Patient");
-        return patient;
-    }
-
-    private void processEncounter(Terser terser, Bundle bundle, String patientId) {
-        try {
-            String checkPv1 = terser.get("/.PV1-1");
-            log.info("Checking for PV1 segment... PV1-1='{}'", checkPv1);
-            if (checkPv1 != null) {
-                Encounter encounter = new Encounter();
-                encounter.setId(UUID.randomUUID().toString());
-                encounter.setStatus(Encounter.EncounterStatus.FINISHED);
-                encounter.setSubject(new org.hl7.fhir.r4.model.Reference("Patient/" + patientId));
-
-                String visitNum = terser.get("/.PV1-19");
-                log.debug("Processing Encounter for Patient {}: Visit Num='{}'", patientId, visitNum);
-                if (visitNum != null) {
-                    encounter.addIdentifier().setValue(visitNum);
-                }
-
-                // PV1-3 Assigned Patient Location
-                String pointOfCare = terser.get("/.PV1-3-1");
-                String room = terser.get("/.PV1-3-2");
-                String bed = terser.get("/.PV1-3-3");
-                if (pointOfCare != null || room != null || bed != null) {
-                    StringBuilder locName = new StringBuilder();
-                    if (pointOfCare != null)
-                        locName.append(pointOfCare);
-                    if (room != null)
-                        locName.append(" ").append(room);
-                    if (bed != null)
-                        locName.append("-").append(bed);
-                    encounter.addLocation().setLocation(new Reference().setDisplay(locName.toString().trim()));
-                }
-
-                String patientClass = terser.get("/.PV1-2");
-                if (patientClass != null) {
-                    encounter.setClass_(new org.hl7.fhir.r4.model.Coding()
-                            .setSystem(MappingConstants.SYSTEM_V2_ACT_CODE).setCode(patientClass));
-                }
-
-                // PV1-4 Admission Type
-                String admType = terser.get("/.PV1-4");
-                if (admType != null) {
-                    encounter.addType().addCoding().setSystem("http://terminology.hl7.org/CodeSystem/v2-0007")
-                            .setCode(admType);
-                }
-
-                // PV1-10 Hospital Service
-                String hospServ = terser.get("/.PV1-10");
-                if (hospServ != null) {
-                    CodeableConcept sc = new CodeableConcept();
-                    sc.addCoding().setSystem("http://terminology.hl7.org/CodeSystem/v2-0069").setCode(hospServ);
-                    encounter.setServiceType(sc);
-                }
-
-                // Map multiple participants (Attending, Referring, Consulting)
-                processParticipants(terser, encounter);
-
-                String admitDateStr = terser.get("/.PV1-44");
-                if (admitDateStr == null || admitDateStr.isEmpty()) {
-                    admitDateStr = terser.get("/.EVN-2");
-                }
-
-                Date admitDate = parseHl7Date(admitDateStr);
-                String dischargeDateStr = terser.get("/.PV1-45");
-                Date dischargeDate = parseHl7Date(dischargeDateStr);
-
-                if (admitDate != null || dischargeDate != null) {
-                    Period period = new Period();
-                    if (admitDate != null)
-                        period.setStart(admitDate);
-                    if (dischargeDate != null)
-                        period.setEnd(dischargeDate);
-                    encounter.setPeriod(period);
-                }
-
-                bundle.addEntry().setResource(encounter).getRequest().setMethod(Bundle.HTTPVerb.POST)
-                        .setUrl("Encounter");
-
-                // PV2-3 Admit Reason
-                try {
-                    String reason = terser.get("/.PV2-3-2"); // Text
-                    if (reason == null || reason.isEmpty()) {
-                        reason = terser.get("/.PV2-3-1"); // Fallback to Identifier
-                    }
-                    if (reason == null || reason.isEmpty()) {
-                        reason = terser.get("/.PV2-3"); // Fallback to whole field
-                    }
-                    log.debug("Processing PV2-3 (Admit Reason): original='{}', cleaned='{}'",
-                            reason, (reason != null ? reason.replace("^", "").trim() : "null"));
-                    if (reason != null && !reason.isEmpty()) {
-                        // Cleanup carets if whole field returned
-                        reason = reason.replace("^", "").trim();
-                        encounter.addReasonCode().setText(reason);
-                    }
-                } catch (Exception ex) {
-                    // PV2 might not exist
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Error processing PV1 segment: {}", e.getMessage());
-        }
-    }
-
-    private void processObservations(Terser terser, Bundle bundle, String patientId) {
-        int obxIndex = 0;
-        while (true) {
-            try {
-                String obxPath = "/.OBX(" + obxIndex + ")";
-                String obx3 = terser.get(obxPath + "-3-1");
-
-                if (obx3 == null)
-                    break;
-
-                Observation observation = new Observation();
-                observation.setId(UUID.randomUUID().toString());
-                observation.setSubject(new org.hl7.fhir.r4.model.Reference("Patient/" + patientId));
-                observation.setStatus(Observation.ObservationStatus.FINAL);
-
-                String obx3Text = terser.get(obxPath + "-3-2");
-                CodeableConcept code = new CodeableConcept();
-                code.addCoding().setSystem(MappingConstants.SYSTEM_LOINC).setCode(obx3).setDisplay(obx3Text);
-                observation.setCode(code);
-
-                String value = terser.get(obxPath + "-5-1");
-                String units = terser.get(obxPath + "-6-1");
-
-                if (value != null && !value.isEmpty()) {
-                    try {
-                        double val = Double.parseDouble(value);
-                        Quantity quantity = new Quantity();
-                        quantity.setValue(val);
-                        if (units != null)
-                            quantity.setUnit(units);
-                        observation.setValue(quantity);
-                    } catch (NumberFormatException e) {
-                        observation.setValue(new org.hl7.fhir.r4.model.StringType(value));
-                    }
-                }
-
-                String status = terser.get(obxPath + "-11");
-                if (status != null) {
-                    switch (status) {
-                        case "F":
-                            observation.setStatus(Observation.ObservationStatus.FINAL);
-                            break;
-                        case "P":
-                            observation.setStatus(Observation.ObservationStatus.PRELIMINARY);
-                            break;
-                        case "C":
-                            observation.setStatus(Observation.ObservationStatus.AMENDED);
-                            break;
-                        case "X":
-                            observation.setStatus(Observation.ObservationStatus.CANCELLED);
-                            break;
-                        case "W":
-                            observation.setStatus(Observation.ObservationStatus.ENTEREDINERROR);
-                            break;
-                        default:
-                            observation.setStatus(Observation.ObservationStatus.FINAL);
-                            break;
-                    }
-                }
-
-                // OBX-8 Interpretation (Abnormal Flags)
-                String interpretation = terser.get(obxPath + "-8");
-                if (interpretation != null) {
-                    observation.addInterpretation().addCoding()
-                            .setSystem("http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation")
-                            .setCode(interpretation);
-                }
-
-                // OBX-14 Date/Time of the Observation
-                String effectiveDateStr = terser.get(obxPath + "-14");
-                if (effectiveDateStr != null && !effectiveDateStr.isEmpty()) {
-                    Date date = parseHl7Date(effectiveDateStr);
-                    if (date != null) {
-                        observation.setEffective(new org.hl7.fhir.r4.model.DateTimeType(date));
-                    }
-                }
-
-                bundle.addEntry().setResource(observation).getRequest().setMethod(Bundle.HTTPVerb.POST)
-                        .setUrl("Observation");
-                obxIndex++;
-            } catch (Exception e) {
-                break;
-            }
-        }
-    }
-
     private void processConditions(Terser terser, Bundle bundle, String patientId) {
         int dg1Index = 0;
         while (true) {
@@ -561,96 +224,6 @@ public class Hl7ToFhirService {
                 bundle.addEntry().setResource(condition).getRequest().setMethod(Bundle.HTTPVerb.POST)
                         .setUrl("Condition");
                 dg1Index++;
-            } catch (Exception e) {
-                break;
-            }
-        }
-    }
-
-    private void processAllergies(Terser terser, Bundle bundle, String patientId) {
-        int al1Index = 0;
-        while (true) {
-            try {
-                String al1Path = "/.AL1(" + al1Index + ")";
-                String allergen = terser.get(al1Path + "-3-1");
-
-                if (allergen == null)
-                    break;
-
-                AllergyIntolerance allergy = new AllergyIntolerance();
-                allergy.setId(UUID.randomUUID().toString());
-                allergy.setPatient(new org.hl7.fhir.r4.model.Reference("Patient/" + patientId));
-                allergy.setVerificationStatus(new CodeableConcept().addCoding(
-                        new Coding().setSystem(MappingConstants.SYSTEM_ALLERGY_VER_STATUS)
-                                .setCode(MappingConstants.CODE_CONFIRMED)));
-                allergy.setClinicalStatus(new CodeableConcept().addCoding(
-                        new Coding().setSystem(MappingConstants.SYSTEM_ALLERGY_CLINICAL)
-                                .setCode(MappingConstants.CODE_ACTIVE)));
-
-                // AL1-2 Allergy Type (DA=Drug Allergy, FA=Food Allergy, etc.)
-                String type = terser.get(al1Path + "-2");
-                if (type != null) {
-                    if (MappingConstants.ALLERGY_TYPE_DRUG.equals(type)
-                            || MappingConstants.ALLERGY_TYPE_MISC.equals(type)) {
-                        allergy.addCategory(
-                                AllergyIntolerance.AllergyIntoleranceCategory.MEDICATION);
-                    } else if (MappingConstants.ALLERGY_TYPE_FOOD.equals(type)) {
-                        allergy.addCategory(AllergyIntolerance.AllergyIntoleranceCategory.FOOD);
-                    } else if (MappingConstants.ALLERGY_TYPE_ENV.equals(type)) {
-                        allergy.addCategory(
-                                AllergyIntolerance.AllergyIntoleranceCategory.ENVIRONMENT);
-                    }
-                }
-
-                // AL1-3 Allergen Code/Text
-                String allergenText = terser.get(al1Path + "-3-2");
-                CodeableConcept code = new CodeableConcept();
-                code.addCoding().setSystem("http://hl7.org/fhir/sid/icd-10").setCode(allergen).setDisplay(allergenText);
-                code.setText(allergenText);
-                allergy.setCode(code);
-
-                AllergyIntolerance.AllergyIntoleranceReactionComponent reactionComp = new AllergyIntolerance.AllergyIntoleranceReactionComponent();
-                boolean hasReaction = false;
-
-                // AL1-4 Severity
-                String severity = terser.get(al1Path + "-4-1"); // Get first component (SV, MO, MI)
-                if (severity == null || severity.isEmpty()) {
-                    severity = terser.get(al1Path + "-4"); // Fallback
-                }
-                log.debug("Processing AL1-4 (Severity) for index {}: '{}'", al1Index, severity);
-                if (severity != null) {
-                    if (severity.startsWith("MI"))
-                        reactionComp.setSeverity(AllergyIntolerance.AllergyIntoleranceSeverity.MILD);
-                    else if (severity.startsWith("MO"))
-                        reactionComp.setSeverity(AllergyIntolerance.AllergyIntoleranceSeverity.MODERATE);
-                    else if (severity.startsWith("SV"))
-                        reactionComp.setSeverity(AllergyIntolerance.AllergyIntoleranceSeverity.SEVERE);
-                    hasReaction = true;
-                }
-
-                // AL1-5 Reaction
-                String reactionText = terser.get(al1Path + "-5");
-                if (reactionText != null && !reactionText.isEmpty()) {
-                    reactionComp.addManifestation(new CodeableConcept().setText(reactionText));
-                    hasReaction = true;
-                }
-
-                if (hasReaction) {
-                    allergy.addReaction(reactionComp);
-                }
-
-                // AL1-6 Identification Date
-                String onsetDate = terser.get(al1Path + "-6");
-                if (onsetDate != null && !onsetDate.isEmpty()) {
-                    Date date = parseHl7Date(onsetDate);
-                    if (date != null) {
-                        allergy.setOnset(new org.hl7.fhir.r4.model.DateTimeType(date));
-                    }
-                }
-
-                bundle.addEntry().setResource(allergy).getRequest().setMethod(Bundle.HTTPVerb.POST)
-                        .setUrl("AllergyIntolerance");
-                al1Index++;
             } catch (Exception e) {
                 break;
             }
@@ -1304,93 +877,6 @@ public class Hl7ToFhirService {
 
     // --- Robust Helper Methods ---
 
-    private void processTelecom(Terser terser, String baseFieldName, Patient patient,
-            ContactPoint.ContactPointUse use) {
-        int telIndex = 0;
-        while (true) {
-            try {
-                String val = terser.get(baseFieldName + "(" + telIndex + ")-1");
-                String equip = terser.get(baseFieldName + "(" + telIndex + ")-2");
-                String email = terser.get(baseFieldName + "(" + telIndex + ")-4");
-
-                if ((val == null || val.isEmpty()) && (email == null || email.isEmpty()))
-                    break;
-
-                ContactPoint cp = patient.addTelecom();
-                if (email != null && !email.isEmpty()
-                        && (MappingConstants.EQUIP_INTERNET.equalsIgnoreCase(equip) || email.contains("@"))) {
-                    cp.setValue(email);
-                    cp.setSystem(ContactPoint.ContactPointSystem.EMAIL);
-                } else if (val != null && !val.isEmpty()) {
-                    cp.setValue(val);
-                    if (MappingConstants.EQUIP_FAX.equalsIgnoreCase(equip))
-                        cp.setSystem(ContactPoint.ContactPointSystem.FAX);
-                    else
-                        cp.setSystem(ContactPoint.ContactPointSystem.PHONE);
-                }
-
-                if (MappingConstants.EQUIP_CELL.equalsIgnoreCase(equip)) {
-                    cp.setUse(ContactPoint.ContactPointUse.MOBILE);
-                } else {
-                    cp.setUse(use);
-                }
-
-                if (equip != null) {
-                    cp.addExtension().setUrl(MappingConstants.EXT_HL7_EQUIPMENT_TYPE).setValue(new StringType(equip));
-                }
-
-                telIndex++;
-            } catch (Exception e) {
-                break;
-            }
-        }
-    }
-
-    private void processParticipants(Terser terser, Encounter encounter) {
-        // PV1-7 Attending Doctor (Repeating)
-        mapDoctorRep(terser, "/.PV1-7", "ATND", "attender", encounter);
-        // PV1-8 Referring Doctor (Repeating)
-        mapDoctorRep(terser, "/.PV1-8", "REFR", "referrer", encounter);
-        // PV1-9 Consulting Doctor (Repeating)
-        mapDoctorRep(terser, "/.PV1-9", "CON", "consultant", encounter);
-    }
-
-    private void mapDoctorRep(Terser terser, String baseField, String roleCode, String roleDisplay,
-            Encounter encounter) {
-        int index = 0;
-        while (true) {
-            try {
-                String path = baseField + "(" + index + ")";
-                String docId = terser.get(path + "-1");
-                String docFamily = terser.get(path + "-2");
-                if (docId == null && docFamily == null)
-                    break;
-
-                Encounter.EncounterParticipantComponent participant = encounter.addParticipant();
-                participant.addType().addCoding()
-                        .setSystem(MappingConstants.SYSTEM_V2_PARTICIPATION_TYPE).setCode(roleCode)
-                        .setDisplay(roleDisplay);
-
-                HumanName docName = new HumanName();
-                if (docFamily != null)
-                    docName.setFamily(docFamily);
-                String docGiven = terser.get(path + "-3");
-                if (docGiven != null)
-                    docName.addGiven(docGiven);
-
-                Reference docRef = new Reference();
-                if (docId != null)
-                    docRef.setReference("Practitioner/" + docId);
-                docRef.setDisplay(docName.isEmpty() ? "Unknown Doctor" : docName.getNameAsSingleString());
-                participant.setIndividual(docRef);
-
-                index++;
-            } catch (Exception e) {
-                break;
-            }
-        }
-    }
-
     private Date parseHl7Date(String hl7Date) {
         if (hl7Date == null || hl7Date.isEmpty())
             return null;
@@ -1419,65 +905,6 @@ public class Hl7ToFhirService {
             log.warn("Failed to parse HL7 date: {}", hl7Date);
         }
         return null;
-    }
-
-    private void processZSegments(Terser terser, Message hapiMsg, Patient patient) {
-        log.debug("Processing Z-Segments...");
-
-        // 1. Process specific ZPI Segment (Custom Patient Info)
-        try {
-            // Check for ZPI fields
-            String setID = terser.get("/.ZPI-1");
-            String petName = terser.get("/.ZPI-2");
-            String vipLevel = terser.get("/.ZPI-3");
-            String archiveStatus = terser.get("/.ZPI-4");
-
-            if (petName != null || vipLevel != null || archiveStatus != null) {
-                log.info("Found ZPI Segment (SetID={}): Pet='{}', VIP='{}', Archive='{}'", setID, petName, vipLevel,
-                        archiveStatus);
-
-                if (petName != null && !petName.isEmpty()) {
-                    patient.addExtension()
-                            .setUrl("http://example.org/fhir/StructureDefinition/pet-name")
-                            .setValue(new StringType(petName));
-                }
-
-                if (vipLevel != null && !vipLevel.isEmpty()) {
-                    patient.addExtension()
-                            .setUrl("http://example.org/fhir/StructureDefinition/vip-level")
-                            .setValue(new StringType(vipLevel));
-                }
-
-                if (archiveStatus != null && !archiveStatus.isEmpty()) {
-                    patient.addExtension()
-                            .setUrl("http://example.org/fhir/StructureDefinition/archive-status")
-                            .setValue(new StringType(archiveStatus));
-                }
-            }
-        } catch (Exception e) {
-            log.debug("ZPI segment not found or parse error: {}", e.getMessage());
-        }
-
-        // 2. Preserve other Z-segments as raw extensions (Generic Handling)
-        try {
-            for (String groupName : hapiMsg.getNames()) {
-                if (groupName.startsWith("Z") && !groupName.equals("ZPI")) {
-                    try {
-                        ca.uhn.hl7v2.model.Structure struct = hapiMsg.get(groupName);
-                        if (struct instanceof Segment) {
-                            Segment seg = (Segment) struct;
-                            patient.addExtension()
-                                    .setUrl(MappingConstants.EXT_HL7_Z_SEGMENT)
-                                    .setValue(new StringType(seg.encode()));
-                        }
-                    } catch (Exception e) {
-                        // ignore
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Error looking up generic Z-segments: {}", e.getMessage());
-        }
     }
 
     private void processImmunizations(Terser terser, Bundle bundle, Patient patient) throws Exception {
