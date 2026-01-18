@@ -5,6 +5,10 @@ import com.fhirtransformer.service.converter.*;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.hl7v2.DefaultHapiContext;
 import ca.uhn.hl7v2.HapiContext;
+import com.fhirtransformer.service.converter.ConditionConverter;
+import com.fhirtransformer.service.converter.MedicationConverter;
+import com.fhirtransformer.service.converter.ProcedureConverter;
+import com.fhirtransformer.service.converter.InsuranceConverter;
 import ca.uhn.fhir.validation.ValidationResult;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -38,8 +42,21 @@ public class ClinicalMappingsGapTest {
         ObservationConverter observationConverter = new ObservationConverter();
         AllergyConverter allergyConverter = new AllergyConverter();
 
+        ConditionConverter conditionConverter = new ConditionConverter();
+        MedicationConverter medicationConverter = new MedicationConverter();
+        ProcedureConverter procedureConverter = new ProcedureConverter();
+        InsuranceConverter insuranceConverter = new InsuranceConverter();
+        AppointmentConverter appointmentConverter = new AppointmentConverter();
+        ImmunizationConverter immunizationConverter = new ImmunizationConverter();
+        ServiceRequestConverter serviceRequestConverter = new ServiceRequestConverter();
+        DiagnosticReportConverter diagnosticReportConverter = new DiagnosticReportConverter();
+        MedicationAdministrationConverter medicationAdministrationConverter = new MedicationAdministrationConverter();
+        PractitionerConverter practitionerConverter = new PractitionerConverter();
         hl7ToFhirService = new Hl7ToFhirService(fhirValidationService, fhirContext, hapiContext, meterRegistry,
-                patientConverter, encounterConverter, observationConverter, allergyConverter);
+                patientConverter, encounterConverter, observationConverter, allergyConverter,
+                conditionConverter, medicationConverter, procedureConverter, insuranceConverter,
+                appointmentConverter, immunizationConverter, serviceRequestConverter, diagnosticReportConverter,
+                medicationAdministrationConverter, practitionerConverter);
     }
 
     @Test

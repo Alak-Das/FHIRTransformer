@@ -22,17 +22,52 @@ public class AllergyConverter implements SegmentConverter<AllergyIntolerance> {
         int al1Index = 0;
 
         while (true) {
-            try {
-                String al1Path = "/.AL1(" + al1Index + ")";
-                String allergen = terser.get(al1Path + "-3-1");
+            if (al1Index > 50) {
+                log.warn("Max AL1 segments reached for Allergy");
+                break;
+            }
+            String al1Path = "/.AL1(" + al1Index + ")";
+            String mainPathToUse = al1Path;
+            boolean found = false;
 
-                if (allergen == null)
+            // Try generic/root path first
+            try {
+                if (terser.getSegment(al1Path) != null) {
+                    found = true;
+                }
+            } catch (Exception e) {
+                // Not found at root, try ADT structure
+                String adtPath = "/.ALLERGY(" + al1Index + ")/AL1";
+                try {
+                    if (terser.getSegment(adtPath) != null) {
+                        mainPathToUse = adtPath;
+                        found = true;
+                    }
+                } catch (Exception ex) {
+                    // Not found
+                }
+            }
+
+            if (!found) {
+                break;
+            }
+
+            try {
+                String allergen = terser.get(mainPathToUse + "-3-1");
+
+                if (allergen == null) {
+                    log.warn("AL1 segment found at {} but missing code (3-1). Breaking.", mainPathToUse);
                     break;
+                }
 
                 AllergyIntolerance allergy = new AllergyIntolerance();
                 allergy.setId(UUID.randomUUID().toString());
                 if (context.getPatientId() != null) {
                     allergy.setPatient(new Reference("Patient/" + context.getPatientId()));
+                }
+                if (context.getEncounterId() != null) {
+                    allergy.addExtension().setUrl("http://hl7.org/fhir/StructureDefinition/encounter-reference")
+                            .setValue(new Reference("Encounter/" + context.getEncounterId()));
                 }
 
                 allergy.setVerificationStatus(new CodeableConcept().addCoding(
@@ -43,7 +78,7 @@ public class AllergyConverter implements SegmentConverter<AllergyIntolerance> {
                                 .setCode(MappingConstants.CODE_ACTIVE)));
 
                 // AL1-2 Allergy Type
-                String type = terser.get(al1Path + "-2");
+                String type = terser.get(mainPathToUse + "-2");
                 if (type != null) {
                     if (MappingConstants.ALLERGY_TYPE_DRUG.equals(type)
                             || MappingConstants.ALLERGY_TYPE_MISC.equals(type)) {
@@ -51,29 +86,38 @@ public class AllergyConverter implements SegmentConverter<AllergyIntolerance> {
                                 AllergyIntolerance.AllergyIntoleranceCategory.MEDICATION);
                     } else if (MappingConstants.ALLERGY_TYPE_FOOD.equals(type)) {
                         allergy.addCategory(AllergyIntolerance.AllergyIntoleranceCategory.FOOD);
-                    } else if (MappingConstants.ALLERGY_TYPE_ENV.equals(type)) {
+                    } else if (MappingConstants.ALLERGY_TYPE_ENV.equals(type) || "AA".equals(type)) { // AA = Animal
+                                                                                                      // Allergy
                         allergy.addCategory(
                                 AllergyIntolerance.AllergyIntoleranceCategory.ENVIRONMENT);
                     }
                 }
 
                 // AL1-3 Allergen Code/Text
-                String allergenText = terser.get(al1Path + "-3-2");
+                String allergenText = terser.get(mainPathToUse + "-3-2");
                 CodeableConcept code = new CodeableConcept();
-                code.addCoding().setSystem("http://hl7.org/fhir/sid/icd-10").setCode(allergen).setDisplay(allergenText);
+                code.addCoding().setSystem(MappingConstants.SYSTEM_ICD10).setCode(allergen).setDisplay(allergenText);
                 code.setText(allergenText);
                 allergy.setCode(code);
 
                 AllergyIntolerance.AllergyIntoleranceReactionComponent reactionComp = new AllergyIntolerance.AllergyIntoleranceReactionComponent();
                 boolean hasReaction = false;
 
-                // AL1-4 Severity
-                String severity = terser.get(al1Path + "-4-1"); // Get first component (SV, MO, MI)
+                // AL1-4 Severity -> Criticality and Reaction.severity
+                String severity = terser.get(mainPathToUse + "-4-1"); // Get first component (SV, MO, MI)
                 if (severity == null || severity.isEmpty()) {
-                    severity = terser.get(al1Path + "-4"); // Fallback
+                    severity = terser.get(mainPathToUse + "-4"); // Fallback
                 }
 
                 if (severity != null) {
+                    // Map to Criticality
+                    if (severity.startsWith("SV")) {
+                        allergy.setCriticality(AllergyIntolerance.AllergyIntoleranceCriticality.HIGH);
+                    } else {
+                        allergy.setCriticality(AllergyIntolerance.AllergyIntoleranceCriticality.LOW);
+                    }
+
+                    // Map to Reaction Severity
                     if (severity.startsWith("MI"))
                         reactionComp.setSeverity(AllergyIntolerance.AllergyIntoleranceSeverity.MILD);
                     else if (severity.startsWith("MO"))
@@ -83,11 +127,26 @@ public class AllergyConverter implements SegmentConverter<AllergyIntolerance> {
                     hasReaction = true;
                 }
 
-                // AL1-5 Reaction
-                String reactionText = terser.get(al1Path + "-5");
-                if (reactionText != null && !reactionText.isEmpty()) {
-                    reactionComp.addManifestation(new CodeableConcept().setText(reactionText));
+                // AL1-5 Reaction (Repeating)
+                int reactIndex = 0;
+                while (true) {
+                    String reactCode = terser.get(mainPathToUse + "-5(" + reactIndex + ")-1");
+                    String reactText = terser.get(mainPathToUse + "-5(" + reactIndex + ")-2");
+                    if (reactCode == null && reactText == null)
+                        break;
+
+                    CodeableConcept cc = new CodeableConcept();
+                    if (reactCode != null)
+                        cc.addCoding().setSystem(MappingConstants.SYSTEM_V2_0127).setCode(reactCode)
+                                .setDisplay(reactText);
+                    if (reactText != null)
+                        cc.setText(reactText);
+
+                    reactionComp.addManifestation(cc);
                     hasReaction = true;
+                    reactIndex++;
+                    if (reactIndex > 10)
+                        break; // Safety
                 }
 
                 if (hasReaction) {
@@ -95,7 +154,7 @@ public class AllergyConverter implements SegmentConverter<AllergyIntolerance> {
                 }
 
                 // AL1-6 Identification Date
-                String onsetDate = terser.get(al1Path + "-6");
+                String onsetDate = terser.get(mainPathToUse + "-6");
                 if (onsetDate != null && !onsetDate.isEmpty()) {
                     try {
                         Date date = Date.from(DateTimeUtil.parseHl7DateTime(onsetDate).toInstant());

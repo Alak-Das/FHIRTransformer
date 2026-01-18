@@ -75,11 +75,23 @@ public final class DateTimeUtil {
 
             // No timezone - use system default
             String cleanDateTime = hl7DateTime;
-            if (cleanDateTime.length() == 12) {
-                cleanDateTime += "00";
+
+            // Pad with zeros if less than 14 characters (YYYYMMDDHHmmss)
+            if (cleanDateTime.length() < 14) {
+                // Determine how many zeros to add
+                // 8 chars (YYYYMMDD) -> add 6 zeros
+                // 10 chars (YYYYMMDDHH) -> add 4 zeros
+                // 12 chars (YYYYMMDDHHmm) -> add 2 zeros
+                int padding = 14 - cleanDateTime.length();
+                StringBuilder sb = new StringBuilder(cleanDateTime);
+                for (int i = 0; i < padding; i++) {
+                    sb.append('0');
+                }
+                cleanDateTime = sb.toString();
             }
+
             LocalDateTime localDateTime = LocalDateTime
-                    .parse(cleanDateTime.substring(0, Math.min(14, cleanDateTime.length())), HL7_DATETIME);
+                    .parse(cleanDateTime.substring(0, 14), HL7_DATETIME);
             return localDateTime.atZone(ZoneId.systemDefault());
 
         } catch (Exception e) {

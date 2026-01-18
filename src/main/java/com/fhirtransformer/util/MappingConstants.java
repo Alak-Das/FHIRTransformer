@@ -72,6 +72,7 @@ public final class MappingConstants {
 
     /** HL7 v3 Participation Type codes */
     public static final String SYSTEM_V2_PARTICIPATION_TYPE = "http://terminology.hl7.org/CodeSystem/v3-ParticipationType";
+    public static final String SYSTEM_V2_DISCHARGE_DISPOSITION = "http://terminology.hl7.org/CodeSystem/v2-0112";
 
     /** FHIR Condition Verification Status codes */
     public static final String SYSTEM_CONDITION_VER_STATUS = "http://terminology.hl7.org/CodeSystem/condition-ver-status";
@@ -99,6 +100,9 @@ public final class MappingConstants {
 
     /** HL7 v3 Religious Affiliation codes */
     public static final String SYSTEM_RELIGION = "http://terminology.hl7.org/CodeSystem/v3-ReligiousAffiliation";
+
+    /** HL7 v2 Table 0127 - Allergen Type codes */
+    public static final String SYSTEM_V2_0127 = "http://terminology.hl7.org/CodeSystem/v2-0127";
 
     // ========================================================================
     // Common Status and Verification Codes
@@ -134,6 +138,21 @@ public final class MappingConstants {
 
     /** Miscellaneous Allergy (MA) */
     public static final String ALLERGY_TYPE_MISC = "MA";
+
+    // ========================================================================
+    // Additional System URIs
+    // ========================================================================
+
+    /** FHIR Observation Interpretation system */
+    public static final String SYSTEM_OBSERVATION_INTERPRETATION = "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation";
+
+    /**
+     * ICD-10 (International Classification of Diseases, 10th Revision) system URL
+     */
+    // Note: SYSTEM_ICD10 is already defined, adding alias if needed or using
+    // existing one.
+    // However, existing is http://hl7.org/fhir/sid/icd-10.
+    // Let's rely on SYSTEM_ICD10 if it exists. Note line 49 defines SYSTEM_ICD10.
 
     // ========================================================================
     // Procedure and Coverage Systems

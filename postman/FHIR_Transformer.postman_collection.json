@@ -1335,7 +1335,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|202301011200||ADT^A01|{{syncSrId}}|P|2.5\rPID|1||104||ORDER^TEST||19900101|M\rOBR|1|ORD123||12345-6^Chest X-Ray^LN|S||202301011200"
+                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|202301011200||ORM^O01|{{syncSrId}}|P|2.5\rPID|1||104||ORDER^TEST||19900101|M\rORC|NW\rOBR|1|ORD123||12345-6^Chest X-Ray^LN|S||202301011200"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",

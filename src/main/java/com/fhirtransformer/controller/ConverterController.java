@@ -34,8 +34,6 @@ import com.fhirtransformer.dto.BatchConversionResponse;
 import com.fhirtransformer.dto.BatchHl7Request;
 import com.fhirtransformer.service.BatchConversionService;
 
-import java.util.stream.Collectors;
-
 @RestController
 @RequestMapping("/api/convert")
 @Slf4j

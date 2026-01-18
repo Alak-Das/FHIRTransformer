@@ -1,6 +1,8 @@
 package com.fhirtransformer.service;
 
 import com.fhirtransformer.service.converter.*;
+import com.fhirtransformer.service.converter.ProcedureConverter;
+import com.fhirtransformer.service.converter.InsuranceConverter;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.hl7v2.DefaultHapiContext;
@@ -38,13 +40,13 @@ public class MedicationRequestTest {
         // But checking the code, convertHl7ToFhir doesn't seem to block on validation
         // failure unless constructed so.
 
-        PatientConverter patientConverter = new PatientConverter();
-        EncounterConverter encounterConverter = new EncounterConverter();
-        ObservationConverter observationConverter = new ObservationConverter();
-        AllergyConverter allergyConverter = new AllergyConverter();
-
         hl7ToFhirService = new Hl7ToFhirService(fhirValidationService, fhirContext, hapiContext, meterRegistry,
-                patientConverter, encounterConverter, observationConverter, allergyConverter);
+                new PatientConverter(), new EncounterConverter(), new ObservationConverter(), new AllergyConverter(),
+                new ConditionConverter(), new MedicationConverter(), new ProcedureConverter(), new InsuranceConverter(),
+                new AppointmentConverter(), new ImmunizationConverter(), new ServiceRequestConverter(),
+                new DiagnosticReportConverter(),
+                new MedicationAdministrationConverter(),
+                new PractitionerConverter());
     }
 
     @Test

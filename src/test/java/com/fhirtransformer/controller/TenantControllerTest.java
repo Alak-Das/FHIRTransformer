@@ -70,11 +70,4 @@ public class TenantControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    @org.springframework.boot.test.context.TestConfiguration
-    static class Config {
-        @org.springframework.context.annotation.Bean
-        public ObjectMapper objectMapper() {
-            return new ObjectMapper();
-        }
-    }
 }
