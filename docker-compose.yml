@@ -2,7 +2,7 @@ services:
   fhir-transformer:
     build: .
     ports:
-      - "9091:8080"
+      - "8090:8080"
     restart: unless-stopped
     container_name: fhir-transformer
     depends_on:

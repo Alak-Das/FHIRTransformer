@@ -5,6 +5,11 @@ import com.fhirtransformer.dto.EnrichedMessage;
 import com.fhirtransformer.model.enums.MessageType;
 import com.fhirtransformer.model.enums.TransactionStatus;
 import com.fhirtransformer.service.AuditService;
+import ca.uhn.fhir.parser.DataFormatException;
+import ca.uhn.hl7v2.HL7Exception;
+import ca.uhn.hl7v2.parser.EncodingNotSupportedException;
+import com.fasterxml.jackson.core.JsonParseException;
+import lombok.extern.slf4j.Slf4j;
 import com.fhirtransformer.service.FhirToHl7Service;
 import com.fhirtransformer.service.Hl7ToFhirService;
 import com.fhirtransformer.service.MessageEnrichmentService;
@@ -23,12 +28,17 @@ import java.security.Principal;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.web.bind.annotation.ExceptionHandler;
+
 import com.fhirtransformer.dto.BatchConversionResponse;
 import com.fhirtransformer.dto.BatchHl7Request;
 import com.fhirtransformer.service.BatchConversionService;
 
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/api/convert")
+@Slf4j
 public class ConverterController {
 
     private final Hl7ToFhirService hl7ToFhirService;
@@ -179,6 +189,27 @@ public class ConverterController {
                 response.getFailureCount() == 0 ? TransactionStatus.COMPLETED : TransactionStatus.FAILED);
 
         return ResponseEntity.ok(response);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleException(Exception e) {
+        log.error("Unhandled exception in ConverterController: {}", e.getMessage(), e);
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("status", "Error");
+        errorResponse.put("message", e.getMessage());
+        errorResponse.put("type", e.getClass().getSimpleName());
+
+        if (e.getMessage() != null && e.getMessage().contains("FHIR Validation Failed")) {
+            errorResponse.put("details", "FHIR validation failed. Check server logs for full details.");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+
+        if (e instanceof HL7Exception || e instanceof EncodingNotSupportedException || e instanceof DataFormatException
+                || e instanceof JsonParseException || e instanceof IllegalArgumentException) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
 
     private String getTenantId(Principal principal) {

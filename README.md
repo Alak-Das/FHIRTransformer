@@ -8,7 +8,7 @@
 
 A high-performance, secure, and multi-tenant integration service bridging **Legacy HL7 v2** systems and Modern **FHIR R4** healthcare standards. Built for reliability and scalability using Spring Boot 4.0, MongoDB, Redis, and RabbitMQ.
 
-**Current Version**: 1.3.0 (Production Ready)  
+**Current Version**: 1.4.0 (Enhanced Clinical Suite)  
 **Status**: ✅ All core features complete, 100% test coverage  
 **Last Updated**: 2026-01-18
 
@@ -23,6 +23,9 @@ A high-performance, secure, and multi-tenant integration service bridging **Lega
     *   **Clinical**: Observations (OBX), Diagnoses (DG1), Allergies (AL1), Procedures (PR1).
     *   **DiagnosticReport**: Laboratory and clinical reports (OBR) with status and timing.
     *   **MedicationRequest**: RXE, RXO, RXA (Medication code, dosage, dispense, refills, administration).
+    *   **Immunization**: RXA (Vaccine code, manufacturer, performer, lot number, administration date).
+    *   **Appointment**: SCH (Identifiers, scheduling status, start time, reason).
+    *   **ServiceRequest**: OBR (Service code, priority, order intent).
     *   **Financial**: Insurance (IN1), Guarantor (GT1).
     *   **Social**: Next of Kin (NK1), Contacts, Religion, Race/Ethnicity (US Core).
 *   **FHIR R4 -> HL7 v2**: Converts Bundles back to legacy HL7 v2.5 ADT messages with high fidelity.
@@ -92,6 +95,12 @@ Enables hospital-specific data preservation via FHIR Extensions.
 - **Segment**: `ZPI` (Patient Information).
 - **Extensions**: maps ZPI-2 (Pet Name), ZPI-3 (VIP Level), and ZPI-4 (Archive Status) to custom URLs.
 
+### 4. **Immunization, Appointment & ServiceRequest**
+Full support for scheduling, vaccinations, and order requests.
+- **Immunization**: Maps `RXA` segments. Handles CVX codes, vaccine performers/manufacturers, and lot tracking.
+- **Appointment**: Maps `SCH` segments. Captures scheduling timing, filler/placer IDs, and reasons.
+- **ServiceRequest**: Maps `OBR` segments. Captures order priority (Stat/Urgent), code, and subject.
+
 ---
 
 ## ⚡ Performance Optimization Guide
@@ -122,18 +131,23 @@ Enables hospital-specific data preservation via FHIR Extensions.
 3. **Run App**: `mvn clean spring-boot:run`
 4. **Onboard Tenant**: 
    ```bash
-   curl -X POST http://localhost:9091/api/tenants/onboard \
+   ```bash
+   curl -X POST http://localhost:8090/api/tenants/onboard \
      -u admin:password -H "Content-Type: application/json" \
      -d '{"tenantId":"T1", "name":"Hospital A", "apiKey":"secret"}'
    ```
 
 ### 🧪 Testing
 - **Integration Tests**: `newman run postman/FHIR_Transformer.postman_collection.json -e postman/FHIRTransformer.local.postman_environment.json`
-- **Baseline**: 138 assertions across 41 tests (100% pass rate).
+- **Baseline**: 142 assertions across 44 tests (100% pass rate).
 
 ---
 
 ## 📜 Release History
+
+### [1.4.0] - 2026-01-18
+- **Clinical Suite**: Added full mapping for `Immunization`, `Appointment`, and `ServiceRequest`.
+- **Actors**: Added `Practitioner` and `Organization` extraction with deduplication logic.
 
 ### [1.3.0] - 2026-01-18
 - **DiagnosticReport**: Full HL7 `OBR` to FHIR mapping.

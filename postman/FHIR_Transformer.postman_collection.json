@@ -1010,7 +1010,7 @@
                                     "});",
                                     "pm.test(\"Response contains error\", function () {",
                                     "    var jsonData = pm.response.json();",
-                                    "    pm.expect(jsonData.error).to.not.be.undefined;",
+                                    "    pm.expect(jsonData.status).to.eql(\"Error\");",
                                     "});"
                                 ],
                                 "type": "text/javascript"
@@ -1109,6 +1109,233 @@
                         "body": {
                             "mode": "raw",
                             "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ADT^A01|1002|P|2.5\r\nPID|1||100||DOE^JANE||19700101|F\r\nZPI|1|Fluffy|VIP-Gold|Active"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "v2-to-fhir-sync"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Sync Clinical: Immunization (RXA)",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"syncImmId\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Contains Immunization\", function () {",
+                                    "    var res = jsonData.entry.find(e => e.resource.resourceType === 'Immunization');",
+                                    "    pm.expect(res).to.not.be.undefined;",
+                                    "    pm.expect(res.resource.vaccineCode.coding[0].code).to.eql('998');",
+                                    "    pm.expect(res.resource.lotNumber).to.eql('LOT123');",
+                                    "    pm.expect(res.resource.status).to.eql('completed');",
+                                    "});",
+                                    "pm.test(\"Contains Manufacturer Organization\", function () {",
+                                    "    var res = jsonData.entry.find(e => e.resource.resourceType === 'Organization');",
+                                    "    pm.expect(res).to.not.be.undefined;",
+                                    "    pm.expect(res.resource.name).to.include('Merck');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "text/plain",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "MSH|^~\\&|IMM|HOSP|REG|OFFICE|202301011200||ADT^A01|{{syncImmId}}|P|2.5\rPID|1||104||DOE^JOHN||19900101|M\rRXA|0|1|202301011200|202301011200|998^Infectious Disease Code^CVX|0.5|mL^milliliters^UCUM||00^Administered^NIP||||||LOT123|20240101|MSD^Merck^MVX|||CP"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "v2-to-fhir-sync"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Sync Clinical: Appointment (SCH)",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"syncApptId\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Contains Appointment\", function () {",
+                                    "    var res = jsonData.entry.find(e => e.resource.resourceType === 'Appointment');",
+                                    "    pm.expect(res).to.not.be.undefined;",
+                                    "    pm.expect(res.resource.status).to.eql('booked');",
+                                    "    pm.expect(res.resource.reasonCode[0].text).to.eql('Recheck Visit');",
+                                    "    pm.expect(res.resource.start).to.include('2023-05-01');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "text/plain",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|202301011200||ADT^A01|{{syncApptId}}|P|2.5\rPID|1||104||APP^TEST||19900101|M\rSCH|PLACER123|FILLER456||||RECHECK^Recheck Visit|||30|m|^^^202305011000"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "v2-to-fhir-sync"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Sync Clinical: ServiceRequest (OBR)",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"syncSrId\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Contains ServiceRequest\", function () {",
+                                    "    var res = jsonData.entry.find(e => e.resource.resourceType === 'ServiceRequest');",
+                                    "    pm.expect(res).to.not.be.undefined;",
+                                    "    pm.expect(res.resource.code.coding[0].code).to.eql('12345-6');",
+                                    "    pm.expect(res.resource.priority).to.eql('stat');",
+                                    "    pm.expect(res.resource.intent).to.eql('order');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "text/plain",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|202301011200||ADT^A01|{{syncSrId}}|P|2.5\rPID|1||104||ORDER^TEST||19900101|M\rOBR|1|ORD123||12345-6^Chest X-Ray^LN|S||202301011200"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",

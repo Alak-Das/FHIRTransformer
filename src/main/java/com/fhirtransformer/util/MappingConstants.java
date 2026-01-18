@@ -54,6 +54,12 @@ public final class MappingConstants {
     /** UCUM (Unified Code for Units of Measure) system URL */
     public static final String SYSTEM_UCUM = "http://unitsofmeasure.org";
 
+    /** CVX (Vaccine Codes) system URL */
+    public static final String SYSTEM_CVX = "http://hl7.org/fhir/sid/cvx";
+
+    /** NDC (National Drug Code) system URL */
+    public static final String SYSTEM_NDC = "http://hl7.org/fhir/sid/ndc";
+
     // ========================================================================
     // HL7 Terminology Systems
     // ========================================================================
@@ -177,4 +183,10 @@ public final class MappingConstants {
 
     /** Social Security Number (SS) */
     public static final String IDENT_SS = "SS";
+
+    /** Practitioner Identifier system */
+    public static final String SYSTEM_PRACTITIONER_ID = "http://terminology.hl7.org/CodeSystem/v2-0203";
+
+    /** Organization Identifier system */
+    public static final String SYSTEM_ORGANIZATION_ID = "http://terminology.hl7.org/CodeSystem/v2-0203";
 }

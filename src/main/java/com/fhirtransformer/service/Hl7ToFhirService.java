@@ -31,17 +31,12 @@ import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.RelatedPerson;
 import org.hl7.fhir.r4.model.MedicationRequest;
 import org.hl7.fhir.r4.model.DiagnosticReport;
-import org.hl7.fhir.r4.model.DiagnosticReport.DiagnosticReportStatus;
-import org.hl7.fhir.r4.model.Dosage;
-import org.hl7.fhir.r4.model.Extension;
-import org.hl7.fhir.r4.model.BooleanType;
-import org.hl7.fhir.r4.model.DateTimeType;
-import org.hl7.fhir.r4.model.StringType;
 import ca.uhn.hl7v2.model.Segment;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import org.hl7.fhir.r4.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.util.*;
+import java.text.SimpleDateFormat;
 
 import java.util.UUID;
 
@@ -118,6 +113,9 @@ public class Hl7ToFhirService {
             // Map Medication segments (RXE, RXO, RXA)
             processMedications(terser, bundle, patient);
             processDiagnosticReports(terser, bundle, patient);
+            processImmunizations(terser, bundle, patient);
+            processAppointments(terser, bundle, patient);
+            processServiceRequests(terser, bundle, patient);
 
             // Map IN1 segments (Insurance)
             processInsurance(terser, bundle, patientId);
@@ -133,6 +131,7 @@ public class Hl7ToFhirService {
 
             log.info("Conversion complete. Bundle contains {} entries.", bundle.getEntry().size());
 
+            // Validate the Bundle
             // Validate the Bundle
             fhirValidationService.validateAndThrow(bundle);
 
@@ -766,7 +765,15 @@ public class Hl7ToFhirService {
                         }
 
                         // RXE-7 Provider's Administration Instructions
+                        // RXE-7 Provider's Administration Instructions
                         String instructions = terser.get(segmentPath + "-7-2"); // CE.text
+                        if (instructions == null || instructions.isEmpty()) {
+                            instructions = terser.get(segmentPath + "-7-1"); // Fallback to Identifier
+                        }
+                        if (instructions == null || instructions.isEmpty()) {
+                            instructions = terser.get(segmentPath + "-7"); // Fallback to whole field
+                        }
+
                         if (instructions != null && !instructions.isEmpty()) {
                             dosage.setText(instructions);
                             hasDosageData = true;
@@ -887,7 +894,8 @@ public class Hl7ToFhirService {
                 String obrPath = "/.OBR(" + obrIndex + ")";
                 // Check existence
                 try {
-                    terser.getSegment(obrPath);
+                    if (terser.getSegment(obrPath) == null)
+                        break;
                     log.info("Found OBR segment at {}", obrPath);
                 } catch (Exception e) {
                     break;
@@ -909,6 +917,10 @@ public class Hl7ToFhirService {
                     CodeableConcept cc = new CodeableConcept();
                     cc.addCoding().setSystem(MappingConstants.SYSTEM_LOINC).setCode(code).setDisplay(display);
                     report.setCode(cc);
+                } else {
+                    log.debug("Skipping DiagnosticReport for OBR at {} due to missing code", obrPath);
+                    obrIndex++;
+                    continue;
                 }
 
                 // OBR-7 Observation Date/Time -> EffectiveDateTime
@@ -936,23 +948,23 @@ public class Hl7ToFhirService {
                 if (status != null) {
                     switch (status) {
                         case "F":
-                            report.setStatus(DiagnosticReportStatus.FINAL);
+                            report.setStatus(DiagnosticReport.DiagnosticReportStatus.FINAL);
                             break;
                         case "C":
-                            report.setStatus(DiagnosticReportStatus.CORRECTED);
+                            report.setStatus(DiagnosticReport.DiagnosticReportStatus.CORRECTED);
                             break;
                         case "X":
-                            report.setStatus(DiagnosticReportStatus.CANCELLED);
+                            report.setStatus(DiagnosticReport.DiagnosticReportStatus.CANCELLED);
                             break;
                         case "P":
-                            report.setStatus(DiagnosticReportStatus.PRELIMINARY);
+                            report.setStatus(DiagnosticReport.DiagnosticReportStatus.PRELIMINARY);
                             break;
                         default:
-                            report.setStatus(DiagnosticReportStatus.FINAL);
+                            report.setStatus(DiagnosticReport.DiagnosticReportStatus.FINAL);
                             break;
                     }
                 } else {
-                    report.setStatus(DiagnosticReportStatus.FINAL);
+                    report.setStatus(DiagnosticReport.DiagnosticReportStatus.FINAL);
                 }
 
                 // OBR-2/3 Identifiers
@@ -1465,6 +1477,226 @@ public class Hl7ToFhirService {
             }
         } catch (Exception e) {
             log.warn("Error looking up generic Z-segments: {}", e.getMessage());
+        }
+    }
+
+    private void processImmunizations(Terser terser, Bundle bundle, Patient patient) throws Exception {
+        log.debug("Processing Immunization segments...");
+        int index = 0;
+        while (true) {
+            try {
+                String rxaPath = "/.RXA(" + index + ")";
+                String vaccineCode = terser.get(rxaPath + "-5-1");
+                if (vaccineCode == null)
+                    break;
+
+                Immunization immunization = new Immunization();
+                immunization.setId(UUID.randomUUID().toString());
+
+                // Status
+                String status = terser.get(rxaPath + "-20");
+                if ("CP".equals(status)) {
+                    immunization.setStatus(Immunization.ImmunizationStatus.COMPLETED);
+                } else if ("NA".equals(status)) {
+                    immunization.setStatus(Immunization.ImmunizationStatus.NOTDONE);
+                } else {
+                    immunization.setStatus(Immunization.ImmunizationStatus.COMPLETED); // Default
+                }
+
+                // Vaccine Code
+                immunization.getVaccineCode().addCoding()
+                        .setSystem(MappingConstants.SYSTEM_CVX)
+                        .setCode(vaccineCode)
+                        .setDisplay(terser.get(rxaPath + "-5-2"));
+
+                // Patient
+                immunization.setPatient(new Reference("Patient/" + patient.getId()));
+
+                // Date/Time
+                String adminDate = terser.get(rxaPath + "-3");
+                if (adminDate != null && !adminDate.isEmpty()) {
+                    DateTimeType dateType = DateTimeUtil.hl7DateTimeToFhir(adminDate);
+                    if (dateType != null) {
+                        immunization.setOccurrence(dateType);
+                    }
+                }
+
+                // Lot Number
+                String lot = terser.get(rxaPath + "-15");
+                if (lot != null)
+                    immunization.setLotNumber(lot);
+
+                // Manufacturer
+                String manufacturerName = terser.get(rxaPath + "-17-2");
+                if (manufacturerName != null) {
+                    Reference manufacturerRef = processOrganization(terser, rxaPath + "-17", bundle);
+                    immunization.setManufacturer(manufacturerRef);
+                }
+
+                // Performer
+                String performerId = terser.get(rxaPath + "-10-1");
+                if (performerId != null) {
+                    Reference performerRef = processPractitioner(terser, rxaPath + "-10", bundle);
+                    immunization.addPerformer().setActor(performerRef);
+                }
+
+                bundle.addEntry().setResource(immunization).getRequest()
+                        .setMethod(Bundle.HTTPVerb.POST)
+                        .setUrl("Immunization");
+                index++;
+            } catch (Exception e) {
+                break;
+            }
+        }
+    }
+
+    private Reference processPractitioner(Terser terser, String path, Bundle bundle) throws Exception {
+        String id = terser.get(path + "-1");
+        if (id == null)
+            return null;
+
+        // Check if already in bundle to avoid duplicates
+        Optional<Bundle.BundleEntryComponent> existing = bundle.getEntry().stream()
+                .filter(e -> e.getResource() instanceof Practitioner && e.getResource().getId().contains(id))
+                .findFirst();
+
+        if (existing.isPresent()) {
+            return new Reference("Practitioner/" + existing.get().getResource().getId());
+        }
+
+        Practitioner practitioner = new Practitioner();
+        practitioner.setId(UUID.randomUUID().toString());
+        practitioner.addIdentifier()
+                .setSystem(MappingConstants.SYSTEM_PRACTITIONER_ID)
+                .setValue(id);
+
+        String family = terser.get(path + "-2");
+        String given = terser.get(path + "-3");
+        if (family != null || given != null) {
+            HumanName name = practitioner.addName().setFamily(family);
+            if (given != null)
+                name.addGiven(given);
+        }
+
+        bundle.addEntry().setResource(practitioner).getRequest()
+                .setMethod(Bundle.HTTPVerb.POST)
+                .setUrl("Practitioner");
+
+        return new Reference("Practitioner/" + practitioner.getId());
+    }
+
+    private Reference processOrganization(Terser terser, String path, Bundle bundle) throws Exception {
+        String id = terser.get(path + "-1");
+        String name = terser.get(path + "-2");
+        if (name == null)
+            name = id;
+        if (name == null)
+            return null;
+
+        // Simple deduplication by name
+        final String finalName = name;
+        Optional<Bundle.BundleEntryComponent> existing = bundle.getEntry().stream()
+                .filter(e -> e.getResource() instanceof Organization
+                        && ((Organization) e.getResource()).getName().equals(finalName))
+                .findFirst();
+
+        if (existing.isPresent()) {
+            return new Reference("Organization/" + existing.get().getResource().getId());
+        }
+
+        Organization org = new Organization();
+        org.setId(UUID.randomUUID().toString());
+        org.setName(name);
+
+        bundle.addEntry().setResource(org).getRequest()
+                .setMethod(Bundle.HTTPVerb.POST)
+                .setUrl("Organization");
+
+        return new Reference("Organization/" + org.getId());
+    }
+
+    private void processAppointments(Terser terser, Bundle bundle, Patient patient) throws Exception {
+        try {
+            log.debug("Processing Appointment segments...");
+            String schPath = "/.SCH";
+            String fillerId = terser.get(schPath + "-2");
+            if (fillerId == null)
+                return;
+
+            Appointment appointment = new Appointment();
+            appointment.setId(UUID.randomUUID().toString());
+            appointment.setStatus(Appointment.AppointmentStatus.BOOKED);
+
+            // Identifiers
+            if (fillerId != null)
+                appointment.addIdentifier().setValue(fillerId);
+            String placerId = terser.get(schPath + "-1");
+            if (placerId != null)
+                appointment.addIdentifier().setValue(placerId);
+
+            // Reason
+            String reasonStr = terser.get(schPath + "-6-2");
+            if (reasonStr != null) {
+                appointment.addReasonCode().setText(reasonStr);
+            }
+
+            // Schedule Timing
+            String start = terser.get(schPath + "-11-4");
+            if (start != null) {
+                DateTimeType dateType = DateTimeUtil.hl7DateTimeToFhir(start);
+                if (dateType != null)
+                    appointment.setStart(dateType.getValue());
+            }
+
+            appointment.addParticipant()
+                    .setActor(new Reference("Patient/" + patient.getId()))
+                    .setStatus(Appointment.ParticipationStatus.ACCEPTED);
+
+            bundle.addEntry().setResource(appointment).getRequest()
+                    .setMethod(Bundle.HTTPVerb.POST)
+                    .setUrl("Appointment");
+        } catch (Exception e) {
+            log.debug("No Appointment (SCH) segment found or error processing it: {}", e.getMessage());
+        }
+    }
+
+    private void processServiceRequests(Terser terser, Bundle bundle, Patient patient) throws Exception {
+        log.debug("Processing ServiceRequest segments...");
+        int index = 0;
+        while (true) {
+            try {
+                String obrPath = "/.OBR(" + index + ")";
+                String code = terser.get(obrPath + "-4-1");
+                if (code == null)
+                    break;
+
+                ServiceRequest sr = new ServiceRequest();
+                sr.setId(UUID.randomUUID().toString());
+                sr.setStatus(ServiceRequest.ServiceRequestStatus.ACTIVE);
+                sr.setIntent(ServiceRequest.ServiceRequestIntent.ORDER);
+
+                // Priority
+                String priority = terser.get(obrPath + "-5");
+                if ("S".equals(priority))
+                    sr.setPriority(ServiceRequest.ServiceRequestPriority.STAT);
+                else if ("A".equals(priority))
+                    sr.setPriority(ServiceRequest.ServiceRequestPriority.URGENT);
+                else
+                    sr.setPriority(ServiceRequest.ServiceRequestPriority.ROUTINE);
+
+                sr.getCode().addCoding()
+                        .setCode(code)
+                        .setDisplay(terser.get(obrPath + "-4-2"));
+
+                sr.setSubject(new Reference("Patient/" + patient.getId()));
+
+                bundle.addEntry().setResource(sr).getRequest()
+                        .setMethod(Bundle.HTTPVerb.POST)
+                        .setUrl("ServiceRequest");
+                index++;
+            } catch (Exception e) {
+                break;
+            }
         }
     }
 }
