@@ -81,11 +81,15 @@ public class ConverterController {
         EnrichedMessage enriched = messageEnrichmentService.ensureHl7TransactionId(hl7Message);
         String transactionId = enriched.getTransactionId();
         String processedMessage = enriched.getContent();
+        String tenantId = getTenantId(principal);
 
-        auditService.logTransaction(getTenantId(principal), transactionId,
+        auditService.logTransaction(tenantId, transactionId,
                 MessageType.V2_TO_FHIR_ASYNC, TransactionStatus.ACCEPTED);
 
-        rabbitTemplate.convertAndSend(exchange, routingKey, processedMessage);
+        rabbitTemplate.convertAndSend(exchange, routingKey, processedMessage, message -> {
+            message.getMessageProperties().setHeader("tenantId", tenantId);
+            return message;
+        });
 
         return createAcceptedResponse(transactionId);
     }

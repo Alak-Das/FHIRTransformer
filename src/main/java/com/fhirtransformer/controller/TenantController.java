@@ -56,7 +56,10 @@ public class TenantController {
                 tenantId, startDate, endDate);
 
         Map<String, Long> statusCounts = statusStats.stream()
-                .collect(Collectors.toMap(StatusCount::get_id, StatusCount::getCount));
+                .collect(Collectors.toMap(
+                        sc -> sc.get_id() != null ? sc.get_id() : "UNKNOWN",
+                        StatusCount::getCount,
+                        (c1, c2) -> c1 + c2));
 
         List<TransactionDTO> dtos = pageRecords.getContent().stream()
                 .map(r -> TransactionDTO.builder()

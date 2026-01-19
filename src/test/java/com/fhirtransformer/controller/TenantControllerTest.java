@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.time.LocalDateTime;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -57,6 +58,9 @@ public class TenantControllerTest {
                 .andExpect(jsonPath("$.name").value("Test Hospital"));
     }
 
+    @MockitoBean
+    private com.fhirtransformer.service.TransactionService transactionService;
+
     @Test
     public void testOnboardTenant_Unauthorized() throws Exception {
         Map<String, String> request = new HashMap<>();
@@ -70,4 +74,39 @@ public class TenantControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    @WithMockUser(username = "admin", roles = { "ADMIN" })
+    public void testGetTenantTransactions_HandlesNullStatus() throws Exception {
+        String tenantId = "tenant1";
+        LocalDateTime now = LocalDateTime.now();
+
+        // Mock Page result
+        org.springframework.data.domain.Page<com.fhirtransformer.model.TransactionRecord> page = org.springframework.data.domain.Page
+                .empty();
+        when(transactionService.findByTenantIdAndTimestampBetween(
+                (String) org.mockito.ArgumentMatchers.eq(tenantId),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(page);
+
+        // Mock StatusCounts with a NULL ID
+        java.util.List<com.fhirtransformer.dto.StatusCount> statusCounts = new java.util.ArrayList<>();
+        statusCounts.add(new com.fhirtransformer.dto.StatusCount(null, 5)); // The problematic case
+        statusCounts.add(new com.fhirtransformer.dto.StatusCount("COMPLETED", 10));
+
+        when(transactionService.countStatusByTenantIdAndTimestampBetween(
+                (String) org.mockito.ArgumentMatchers.eq(tenantId),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(statusCounts);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .get("/api/tenants/{tenantId}/transactions", tenantId)
+                .param("startDate", now.minusDays(1).toString())
+                .param("endDate", now.plusDays(1).toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statusCounts.UNKNOWN").value(5)) // Verify mapping of null -> UNKNOWN
+                .andExpect(jsonPath("$.statusCounts.COMPLETED").value(10));
+    }
 }

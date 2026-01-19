@@ -84,7 +84,9 @@ public class ConverterControllerTest {
 
                 verify(auditService).logTransaction(eq("tenant1"), eq(transactionId), eq(MessageType.V2_TO_FHIR_ASYNC),
                                 eq(TransactionStatus.ACCEPTED));
-                verify(rabbitTemplate).convertAndSend(eq("test-exchange"), eq("test-routing-key"), eq(hl7Message));
+                verify(rabbitTemplate).convertAndSend(eq("test-exchange"), eq("test-routing-key"), eq(hl7Message),
+                                org.mockito.ArgumentMatchers
+                                                .any(org.springframework.amqp.core.MessagePostProcessor.class));
         }
 
         @Test

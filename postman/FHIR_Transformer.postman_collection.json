@@ -226,6 +226,152 @@
                     }
                 },
                 {
+                    "name": "Async Malformed HL7",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"asyncMalformedId\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 202\", function () {",
+                                    "    pm.response.to.have.status(202);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.environment.set(\"failedTransactionId\", jsonData.transactionId);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "text/plain",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "XXX|^~\\&|BAD|MSG|...|...|...|...|ADT^A01|{{asyncMalformedId}}|P|2.5\rINVALID_SEGMENT|THIS WILL FAIL"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/v2-to-fhir",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "v2-to-fhir"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Verify Async Failure Status",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var start = Date.now();",
+                                    "while (Date.now() - start < 2000) {}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "var failedId = pm.environment.get(\"failedTransactionId\");",
+                                    "var targetTx = jsonData.transactions.find(t => t.originalMessageId === failedId);",
+                                    "pm.test(\"Transaction found in audit log\", function() {",
+                                    "    pm.expect(targetTx).to.not.be.undefined;",
+                                    "});",
+                                    "pm.test(\"Transaction Status is FAILED\", function() {",
+                                    "    if (targetTx) {",
+                                    "        pm.expect(targetTx.status).to.eql(\"FAILED\");",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/tenants/admin/transactions?startDate=2000-01-01T00:00:00&endDate=2100-01-01T00:00:00",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "tenants",
+                                "admin",
+                                "transactions"
+                            ],
+                            "query": [
+                                {
+                                    "key": "startDate",
+                                    "value": "2000-01-01T00:00:00"
+                                },
+                                {
+                                    "key": "endDate",
+                                    "value": "2100-01-01T00:00:00"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
                     "name": "Sync ADT^A01 (Full Patient + Encounter)",
                     "event": [
                         {

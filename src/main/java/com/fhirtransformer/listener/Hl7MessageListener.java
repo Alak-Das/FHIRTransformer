@@ -27,9 +27,13 @@ public class Hl7MessageListener {
     }
 
     @RabbitListener(queues = "${app.rabbitmq.queue}")
-    public void receiveMessage(String hl7Message) {
+    public void receiveMessage(String hl7Message,
+            @org.springframework.messaging.handler.annotation.Header(value = "tenantId", required = false) String tenantId) {
         try {
-            log.info("Received HL7 Message: {}", hl7Message);
+            if (tenantId != null) {
+                com.fhirtransformer.config.TenantContext.setTenantId(tenantId);
+            }
+            log.info("Received HL7 Message with TenantID: {}", tenantId);
             String fhirBundle = hl7ToFhirService.convertHl7ToFhir(hl7Message);
 
             // Publish to Output Queue
@@ -46,6 +50,21 @@ public class Hl7MessageListener {
 
         } catch (Exception e) {
             log.error("Error processing HL7 Message: {}", e.getMessage(), e);
+            // Attempt to update status to FAILED
+            try {
+                String[] segments = hl7Message.split("\r");
+                String[] mshFields = segments[0].split("\\|", -1);
+                if (mshFields.length > 9) {
+                    String transactionId = mshFields[9];
+                    auditService.updateTransactionStatus(transactionId, "FAILED");
+                }
+            } catch (Exception ex) {
+                log.error("Could not extract Transaction ID from failed message: {}", ex.getMessage());
+            }
+            // Rethrow to ensure RabbitMQ knows it failed (for DLQ/Retry)
+            throw new RuntimeException("Conversion failed", e);
+        } finally {
+            com.fhirtransformer.config.TenantContext.clear();
         }
     }
 }
