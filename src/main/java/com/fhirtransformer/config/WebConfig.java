@@ -1,6 +1,7 @@
 package com.fhirtransformer.config;
 
 import com.fhirtransformer.interceptor.RateLimitInterceptor;
+import com.fhirtransformer.interceptor.MdcInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -11,10 +12,13 @@ public class WebConfig implements WebMvcConfigurer {
 
     private final TenantInterceptor tenantInterceptor;
     private final RateLimitInterceptor rateLimitInterceptor;
+    private final MdcInterceptor mdcInterceptor;
 
-    public WebConfig(TenantInterceptor tenantInterceptor, RateLimitInterceptor rateLimitInterceptor) {
+    public WebConfig(TenantInterceptor tenantInterceptor, RateLimitInterceptor rateLimitInterceptor,
+            MdcInterceptor mdcInterceptor) {
         this.tenantInterceptor = tenantInterceptor;
         this.rateLimitInterceptor = rateLimitInterceptor;
+        this.mdcInterceptor = mdcInterceptor;
     }
 
     @Override
@@ -23,6 +27,9 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(rateLimitInterceptor)
                 .addPathPatterns("/api/**") // Apply to all API endpoints
                 .excludePathPatterns("/actuator/**"); // Exclude actuator endpoints
+
+        // Register MDC Interceptor for all requests to ensure traceability
+        registry.addInterceptor(mdcInterceptor);
     }
 
     @Override

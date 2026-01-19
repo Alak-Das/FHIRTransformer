@@ -7,6 +7,7 @@ import com.fhirtransformer.model.enums.TransactionStatus;
 import com.fhirtransformer.service.AuditService;
 import com.fhirtransformer.service.IdempotencyService;
 import com.fhirtransformer.model.TransactionRecord;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.bind.annotation.RequestHeader;
 import ca.uhn.fhir.parser.DataFormatException;
 import ca.uhn.hl7v2.HL7Exception;
@@ -87,6 +88,7 @@ public class ConverterController {
     public ResponseEntity<String> convertToFhir(
             @RequestBody String hl7Message,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            HttpServletResponse response,
             Principal principal) throws Exception {
 
         String tenantId = getTenantId(principal);
@@ -97,16 +99,18 @@ public class ConverterController {
             if (existing.isPresent()) {
                 TransactionRecord record = existing.get();
                 log.info("Duplicate request detected for idempotency key: {}", idempotencyKey);
-                Map<String, String> response = new HashMap<>();
-                response.put("status", "Already processed");
-                response.put("transactionId", record.getTransactionId());
-                response.put("originalStatus", record.getStatus());
-                return ResponseEntity.ok(objectMapper.writeValueAsString(response));
+                Map<String, String> duplicateResponse = new HashMap<>();
+                duplicateResponse.put("status", "Already processed");
+                duplicateResponse.put("transactionId", record.getTransactionId());
+                duplicateResponse.put("originalStatus", record.getStatus());
+                return ResponseEntity.ok(objectMapper.writeValueAsString(duplicateResponse));
             }
         }
 
         EnrichedMessage enriched = messageEnrichmentService.ensureHl7TransactionId(hl7Message);
         String transactionId = enriched.getTransactionId();
+        org.slf4j.MDC.put("transformerId", transactionId); // Update unified ID
+        response.setHeader("transformerId", transactionId);
         String processedMessage = enriched.getContent();
 
         auditService.logTransaction(tenantId, transactionId,
@@ -121,10 +125,13 @@ public class ConverterController {
     }
 
     @PostMapping(value = "/v2-to-fhir-sync", consumes = MediaType.TEXT_PLAIN_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> convertToFhirSync(@RequestBody String hl7Message, Principal principal)
+    public ResponseEntity<String> convertToFhirSync(@RequestBody String hl7Message,
+            HttpServletResponse response, Principal principal)
             throws Exception {
         EnrichedMessage enriched = messageEnrichmentService.ensureHl7TransactionId(hl7Message);
         String transactionId = enriched.getTransactionId();
+        org.slf4j.MDC.put("transformerId", transactionId); // Update unified ID
+        response.setHeader("transformerId", transactionId);
         String processedMessage = enriched.getContent();
 
         String fhirJson = hl7ToFhirService.convertHl7ToFhir(processedMessage);
@@ -139,6 +146,7 @@ public class ConverterController {
     public ResponseEntity<String> convertToHl7(
             @RequestBody String fhirJson,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            HttpServletResponse response,
             Principal principal) throws Exception {
 
         String tenantId = getTenantId(principal);
@@ -149,16 +157,18 @@ public class ConverterController {
             if (existing.isPresent()) {
                 TransactionRecord record = existing.get();
                 log.info("Duplicate request detected for idempotency key: {}", idempotencyKey);
-                Map<String, String> response = new HashMap<>();
-                response.put("status", "Already processed");
-                response.put("transactionId", record.getTransactionId());
-                response.put("originalStatus", record.getStatus());
-                return ResponseEntity.ok(objectMapper.writeValueAsString(response));
+                Map<String, String> duplicateResponse = new HashMap<>();
+                duplicateResponse.put("status", "Already processed");
+                duplicateResponse.put("transactionId", record.getTransactionId());
+                duplicateResponse.put("originalStatus", record.getStatus());
+                return ResponseEntity.ok(objectMapper.writeValueAsString(duplicateResponse));
             }
         }
 
         EnrichedMessage enriched = messageEnrichmentService.ensureFhirTransactionId(fhirJson);
         String transactionId = enriched.getTransactionId();
+        org.slf4j.MDC.put("transformerId", transactionId); // Update unified ID
+        response.setHeader("transformerId", transactionId);
         String processedJson = enriched.getContent();
 
         auditService.logTransaction(tenantId, transactionId,
@@ -170,9 +180,12 @@ public class ConverterController {
     }
 
     @PostMapping(value = "/fhir-to-v2-sync", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.TEXT_PLAIN_VALUE)
-    public ResponseEntity<String> convertToHl7Sync(@RequestBody String fhirJson, Principal principal) throws Exception {
+    public ResponseEntity<String> convertToHl7Sync(@RequestBody String fhirJson,
+            HttpServletResponse response, Principal principal) throws Exception {
         EnrichedMessage enriched = messageEnrichmentService.ensureFhirTransactionId(fhirJson);
         String transactionId = enriched.getTransactionId();
+        org.slf4j.MDC.put("transformerId", transactionId); // Update unified ID
+        response.setHeader("transformerId", transactionId);
         String processedJson = enriched.getContent();
 
         String hl7Message = fhirToHl7Service.convertFhirToHl7(processedJson);

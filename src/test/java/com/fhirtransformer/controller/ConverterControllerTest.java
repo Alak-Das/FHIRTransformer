@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -83,10 +84,11 @@ public class ConverterControllerTest {
                                 .principal(() -> "tenant1"))
                                 .andExpect(status().isAccepted())
                                 .andExpect(jsonPath("$.status").value("Accepted"))
-                                .andExpect(jsonPath("$.transactionId").value(transactionId));
+                                .andExpect(jsonPath("$.transactionId").value(transactionId))
+                                .andExpect(header().string("transformerId", transactionId));
 
                 verify(auditService).logTransaction(eq("tenant1"), eq(transactionId), eq(MessageType.V2_TO_FHIR_ASYNC),
-                                eq(TransactionStatus.ACCEPTED));
+                                eq(TransactionStatus.ACCEPTED), isNull());
                 verify(rabbitTemplate).convertAndSend(eq("test-exchange"), eq("test-routing-key"), eq(hl7Message),
                                 org.mockito.ArgumentMatchers
                                                 .any(org.springframework.amqp.core.MessagePostProcessor.class));
@@ -107,7 +109,8 @@ public class ConverterControllerTest {
                                 .content(hl7Message)
                                 .principal(() -> "tenant1"))
                                 .andExpect(status().isOk())
-                                .andExpect(content().json(fhirJson));
+                                .andExpect(content().json(fhirJson))
+                                .andExpect(header().string("transformerId", transactionId));
 
                 verify(auditService).logTransaction(eq("tenant1"), eq(transactionId), eq(MessageType.V2_TO_FHIR_SYNC),
                                 eq(TransactionStatus.COMPLETED));
@@ -127,10 +130,11 @@ public class ConverterControllerTest {
                                 .principal(() -> "tenant1"))
                                 .andExpect(status().isAccepted())
                                 .andExpect(jsonPath("$.status").value("Accepted"))
-                                .andExpect(jsonPath("$.transactionId").value(transactionId));
+                                .andExpect(jsonPath("$.transactionId").value(transactionId))
+                                .andExpect(header().string("transformerId", transactionId));
 
                 verify(auditService).logTransaction(eq("tenant1"), eq(transactionId), eq(MessageType.FHIR_TO_V2_ASYNC),
-                                eq(TransactionStatus.QUEUED));
+                                eq(TransactionStatus.QUEUED), isNull());
                 verify(rabbitTemplate).convertAndSend(eq("test-fhir-exchange"), eq("test-fhir-routing-key"),
                                 eq(fhirJson));
         }
@@ -150,7 +154,8 @@ public class ConverterControllerTest {
                                 .content(fhirJson)
                                 .principal(() -> "tenant1"))
                                 .andExpect(status().isOk())
-                                .andExpect(content().string(hl7Message));
+                                .andExpect(content().string(hl7Message))
+                                .andExpect(header().string("transformerId", transactionId));
 
                 verify(auditService).logTransaction(eq("tenant1"), eq(transactionId), eq(MessageType.FHIR_TO_V2_SYNC),
                                 eq(TransactionStatus.COMPLETED));
