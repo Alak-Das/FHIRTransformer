@@ -577,6 +577,7 @@ newman run postman/FHIR_Transformer.postman_collection.json \
 
 ## Next Steps
 
-- **For data models**, see [Data Models](./data-models.md)
-- **For workflows**, see [Functional Workflows](./workflows.md)
-- **For testing**, see [Testing Guide](./testing.md)
+- **For architecture details**, see [Architecture & Design Patterns](architecture.md)
+- **For deployment**, see [Setup & Deployment](setup-deployment.md)
+- **For configuration**, see [Configuration Guide](configuration.md)
+

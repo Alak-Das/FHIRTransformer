@@ -540,6 +540,7 @@ server.tomcat.max-connections=10000
 
 ## Next Steps
 
-- **For API details**, see [API Reference](./api-reference.md)
-- **For deployment**, see [Setup & Deployment](./setup-deployment.md)
-- **For workflows**, see [Functional Workflows](./workflows.md)
+- **For API details**, see [API Reference](api-reference.md)
+- **For deployment**, see [Setup & Deployment](setup-deployment.md)
+- **For configuration**, see [Configuration Guide](configuration.md)
+

@@ -503,6 +503,7 @@ curl http://localhost:8090/actuator/configprops -u admin:password
 
 ## Next Steps
 
-- **For deployment**, see [Setup & Deployment](./setup-deployment.md)
-- **For performance tuning**, see [Performance Optimization](./performance.md)
-- **For security details**, see [Security & Multi-Tenancy](./security.md)
+- **For deployment**, see [Setup & Deployment](setup-deployment.md)
+- **For architecture**, see [Architecture & Design Patterns](architecture.md)
+- **For API usage**, see [API Reference](api-reference.md)
+

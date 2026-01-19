@@ -6,15 +6,11 @@ FHIR Transformer is an enterprise-grade, high-performance bidirectional message 
 
 ## Quick Links
 
-- [Architecture & Design Patterns](./architecture.md)
-- [API Reference](./api-reference.md)
-- [Data Models](./data-models.md)
-- [Setup & Deployment](./setup-deployment.md)
-- [Configuration Guide](./configuration.md)
-- [Functional Workflows](./workflows.md)
-- [Security & Multi-Tenancy](./security.md)
-- [Performance Optimization](./performance.md)
-- [Testing Guide](./testing.md)
+- [Architecture & Design Patterns](docs/architecture.md)
+- [API Reference](docs/api-reference.md)
+- [Setup & Deployment](docs/setup-deployment.md)
+- [Configuration Guide](docs/configuration.md)
+
 
 ## Key Features
 
@@ -134,21 +130,13 @@ FHIRTransformer/
 ## Documentation Index
 
 ### For Developers
-1. **[Architecture & Design Patterns](./architecture.md)** - System architecture, design patterns, and component interactions
-2. **[API Reference](./api-reference.md)** - Complete REST API documentation with examples
-3. **[Data Models](./data-models.md)** - Domain models, DTOs, and database schemas
-4. **[Functional Workflows](./workflows.md)** - Step-by-step process flows for key operations
+1. **[Architecture & Design Patterns](docs/architecture.md)** - System architecture, design patterns, and component interactions
+2. **[API Reference](docs/api-reference.md)** - Complete REST API documentation with examples
 
 ### For DevOps
-1. **[Setup & Deployment](./setup-deployment.md)** - Installation, deployment, and scaling guide
-2. **[Configuration Guide](./configuration.md)** - Complete configuration reference
-3. **[Performance Optimization](./performance.md)** - Tuning guide for production
+1. **[Setup & Deployment](docs/setup-deployment.md)** - Installation, deployment, and scaling guide
+2. **[Configuration Guide](docs/configuration.md)** - Complete configuration reference
 
-### For QA/Testers
-1. **[Testing Guide](./testing.md)** - Unit tests, integration tests, and Postman collection usage
-
-### For Security Teams
-1. **[Security & Multi-Tenancy](./security.md)** - Authentication, authorization, and tenant isolation
 
 ## License
 

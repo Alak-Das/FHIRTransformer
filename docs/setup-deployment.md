@@ -635,6 +635,7 @@ db.tenants.createIndex({ "tenantId": 1 }, { unique: true })
 
 ## Next Steps
 
-- **For configuration details**, see [Configuration Guide](./configuration.md)
-- **For monitoring**, see [Performance Optimization](./performance.md)
-- **For testing**, see [Testing Guide](./testing.md)
+- **For configuration details**, see [Configuration Guide](configuration.md)
+- **For architecture**, see [Architecture & Design Patterns](architecture.md)
+- **For API reference**, see [API Reference](api-reference.md)
+
