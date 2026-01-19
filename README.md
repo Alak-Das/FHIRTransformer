@@ -1,184 +1,159 @@
-# FHIR Transformer Service
+# FHIR Transformer Documentation
 
-![Java](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.1-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)
-![Redis](https://img.shields.io/badge/Redis-7.0-DC382D?style=for-the-badge&logo=redis&logoColor=white)
-![RabbitMQ](https://img.shields.io/badge/RabbitMQ-3.12-FF6600?style=for-the-badge&logo=rabbitmq&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-24.0-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+## Overview
 
-A high-performance, secure, and multi-tenant integration service bridging **Legacy HL7 v2** systems and Modern **FHIR R4** healthcare standards. Built for reliability and scalability using Spring Boot 4.0, MongoDB, Redis, and RabbitMQ.
+FHIR Transformer is an enterprise-grade, high-performance bidirectional message conversion engine that transforms HL7 v2.x messages into FHIR R4 resources and vice versa. Built on Spring Boot 4.0.1 with Java 21, it employs asynchronous message processing via RabbitMQ, multi-tenant architecture, role-based access control, and distributed caching for optimal performance.
 
-**Current Version**: 1.5.0 (Refactored Architecture)  
-**Status**: ✅ All core features complete, 100% test coverage  
-**Last Updated**: 2026-01-18
+## Quick Links
 
----
+- [Architecture & Design Patterns](./architecture.md)
+- [API Reference](./api-reference.md)
+- [Data Models](./data-models.md)
+- [Setup & Deployment](./setup-deployment.md)
+- [Configuration Guide](./configuration.md)
+- [Functional Workflows](./workflows.md)
+- [Security & Multi-Tenancy](./security.md)
+- [Performance Optimization](./performance.md)
+- [Testing Guide](./testing.md)
 
-## 🚀 Key Capabilities
+## Key Features
 
-### 1. **World-Class Bidirectional Mapping** 🔄
-*   **HL7 v2 -> FHIR R4**: Converts ADT (A01, A03, A08) and ORU messages to comprehensive FHIR Bundles.
-    *   **Patient**: Demographics (PID), Death (PID-30/29), Identifiers (Mrn/DL/SSN), US Core Race/Ethnicity.
-    *   **Encounter**: Inpatient/Outpatient/Emergency, Admission Source (PV1-14), Discharge Disposition (PV1-36).
-    *   **Clinical**: Observations (OBX), Diagnoses (DG1), Allergies (AL1), Procedures (PR1).
-    *   **DiagnosticReport**: Laboratory and clinical reports (OBR) with status and timing.
-    *   **MedicationRequest**: RXE, RXO, RXA (Medication code, dosage, dispense, refills, administration).
-    *   **Immunization**: RXA (Vaccine code, manufacturer, performer, lot number, administration date).
-    *   **Appointment**: SCH (Identifiers, scheduling status, start time, reason).
-    *   **ServiceRequest**: OBR (Service code, priority, order intent).
-    *   **Financial**: Insurance (IN1), Guarantor (GT1).
-    *   **Social**: Next of Kin (NK1), Contacts, Religion, Race/Ethnicity (US Core).
-*   **FHIR R4 -> HL7 v2**: Converts Bundles back to legacy HL7 v2.5 ADT messages with high fidelity.
-*   **Custom Z-Segments**: Full support for `ZPI` (Pet Name, VIP Level) mapped to FHIR Extensions.
+### Core Capabilities
+- **Bidirectional Conversion**: HL7 v2.x ↔ FHIR R4 with full resource mapping
+- **Async & Sync Processing**: Both synchronous REST APIs and asynchronous RabbitMQ-based processing
+- **Batch Operations**: Parallel batch conversion with configurable concurrency
+- **Multi-Tenancy**: Complete tenant isolation with per-tenant user management
+- **Custom Z-Segment Support**: Extensible mapping for non-standard HL7 segments via FHIR extensions
 
-### 2. **Enterprise Architecture** 🏢
-*   **Multi-Tenancy**: Dynamic tenant onboarding with isolated credentials and RBAC.
-*   **Event-Driven**: Asynchronous "Fire-and-Forget" architecture via RabbitMQ.
-*   **Security**: DoS Protection (credential hashing), Fail-Closed design, and Granular RBAC.
-*   **High Performance**: 200-500 messages/second, 64ms average latency.
-*   **Reliability**: Dead Letter Queues (DLQ), strict memory limits, and infinite loop protection.
+### Enterprise Features
+- **Role-Based Access Control**: Granular permissions (ADMIN, TENANT roles)
+- **Distributed Caching**: Redis-based caching with configurable TTL
+- **Transaction Auditing**: Comprehensive audit logs with status tracking (ACCEPTED, PROCESSED, FAILED)
+- **Dead Letter Queue**: Automatic DLQ handling for failed messages
+- **Metrics & Monitoring**: Prometheus-compatible metrics via Spring Actuator
 
----
+### Technical Stack
+- **Framework**: Spring Boot 4.0.1, Java 21
+- **Message Broker**: RabbitMQ 3.x with management console
+- **Database**: MongoDB (document storage)
+- **Cache**: Redis 7.x (distributed caching)
+- **HL7/FHIR Libraries**: HAPI FHIR 7.6.1, HAPI HL7 v2 2.5.1
+- **Deployment**: Docker Compose, Multi-stage Dockerfile
 
-## 🏗️ Architecture & Flow
+## Supported HL7 Versions
+- HL7 v2.3
+- HL7 v2.4
+- HL7 v2.5 (Primary)
 
-The system follows a layered, event-driven architecture designed for scale.
+## Supported FHIR Resources
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Auth as Security Layer
-    participant Cache as Redis
-    participant API as Controller
-    participant MQ as RabbitMQ
-    participant Worker as Listener
-    participant DLQ as Dead Letter Queue
+### Administrative Resources
+- Patient (PID, PD1)
+- Practitioner (Custom mappings)
+- RelatedPerson (NK1)
 
-    Client->>Auth: Basic Auth (Tenant/Admin)
-    Auth->>Cache: Check Cached Creds
-    alt Miss
-        Auth->>DB: Fetch Creds
-        Auth->>Cache: Store Creds
-    end
-    
-    Auth->>API: Authenticated
-    API->>MQ: Publish Message
-    API-->>Client: 202 Accepted
-    
-    MQ->>Worker: Consume
-    Worker->>Worker: Transform HL7 <-> FHIR
-    alt Success
-        Worker->>MQ: Publish Result
-    else Failure
-        Worker->>DLQ: Route to DLQ
-    end
+### Clinical Resources
+- Encounter (PV1, PV2)
+- Observation (OBX)
+- AllergyIntolerance (AL1)
+- Condition (DG1)
+- Procedure (PR1)
+- DiagnosticReport (ORU^R01)
+- ServiceRequest (OBR)
+- Immunization (RXA)
+- Appointment (SCH)
+
+### Medication Resources
+- MedicationRequest (RXE, RXR)
+- MedicationAdministration (RXA)
+
+### Financial Resources
+- Coverage (IN1, insurance)
+- Account (GT1, guarantor)
+
+## Getting Started
+
+### Prerequisites
+- Java 21+
+- Docker & Docker Compose
+- Maven 3.9+
+- Postman (for testing)
+
+### Quick Start
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd FHIRTransformer
+
+# Start infrastructure services
+docker-compose up -d
+
+# Application runs on http://localhost:8090
+# RabbitMQ Management UI: http://localhost:15672 (guest/guest)
+# MongoDB: mongodb://localhost:27017/fhirtransformer
+# Redis: redis://localhost:6379
 ```
 
----
+### First API Call
 
-## 🔬 Clinical Mapping Implementations
+```bash
+# Convert HL7 to FHIR (Sync)
+curl -X POST http://localhost:8090/api/convert/v2-to-fhir-sync \
+  -H "Content-Type: text/plain" \
+  -u admin:password \
+  --data "MSH|^~\&|SENDING|FACILITY|RECEIVING|FACILITY|20240119120000||ADT^A01|MSG001|P|2.5
+PID|1||12345||Doe^John||19800101|M|||123 Main St^^New York^NY^10001"
+```
 
-### 1. **MedicationRequest (RX Mappings)**
-Maps `RXE`, `RXO`, and `RXA` segments to FHIR `MedicationRequest`.
-- **Segments**: `RXE` (Pharmacy/Treatment Encoded Order), `RXO` (Pharmacy/Treatment Order), `RXA` (Pharmacy/Treatment Administration).
-- **Key Fields**: Medication code (RxNorm/NDC), Dosage, Dispense quantity, authoredOn, and status.
-- **Robustness**: Implements iteration limits to prevent hangs on malformed repeating segments.
+## Project Structure
 
-### 2. **DiagnosticReport (Lab Results)**
-Maps `OBR` segments to FHIR `DiagnosticReport`.
-- **Status Mapping**: HL7 Result Status (OBR-25) mapped to FHIR DiagnosticReportStatus (F, C, X, P).
-- **Timing**: Support for 12/14-character HL7 timestamps with automatic second-precision normalization.
-- **Identifiers**: Both Placer and Filler order numbers preserved as official identifiers.
+```
+FHIRTransformer/
+├── src/main/java/com/fhirtransformer/
+│   ├── config/              # Configuration classes (Security, RabbitMQ, Cache, etc.)
+│   ├── controller/          # REST controllers (Converter, Tenant)
+│   ├── dto/                 # Data Transfer Objects
+│   ├── exception/           # Custom exceptions
+│   ├── listener/            # RabbitMQ message listeners
+│   ├── model/               # Domain models (Tenant, TransactionRecord, enums)
+│   ├── repository/          # MongoDB repositories
+│   ├── service/             # Business logic services
+│   │   └── converter/       # Segment-specific converters
+│   └── util/                # Utility classes
+├── src/main/resources/
+│   └── application.properties
+├── src/test/java/           # Unit and integration tests
+├── postman/                 # Postman collection for integration tests
+├── docker-compose.yml       # Multi-container orchestration
+├── Dockerfile               # Multi-stage build
+├── pom.xml                  # Maven dependencies
+└── docs/                    # Comprehensive documentation
+```
 
-### 3. **Custom Z-Segments (ZPI)**
-Enables hospital-specific data preservation via FHIR Extensions.
-- **Segment**: `ZPI` (Patient Information).
-- **Extensions**: maps ZPI-2 (Pet Name), ZPI-3 (VIP Level), and ZPI-4 (Archive Status) to custom URLs.
+## Documentation Index
 
-### 4. **Immunization, Appointment & ServiceRequest**
-Full support for scheduling, vaccinations, and order requests.
-- **Immunization**: Maps `RXA` segments. Handles CVX codes, vaccine performers/manufacturers, and lot tracking.
-- **Appointment**: Maps `SCH` segments. Captures scheduling timing, filler/placer IDs, and reasons.
-- **ServiceRequest**: Maps `OBR` segments. Captures order priority (Stat/Urgent), code, and subject.
+### For Developers
+1. **[Architecture & Design Patterns](./architecture.md)** - System architecture, design patterns, and component interactions
+2. **[API Reference](./api-reference.md)** - Complete REST API documentation with examples
+3. **[Data Models](./data-models.md)** - Domain models, DTOs, and database schemas
+4. **[Functional Workflows](./workflows.md)** - Step-by-step process flows for key operations
 
----
+### For DevOps
+1. **[Setup & Deployment](./setup-deployment.md)** - Installation, deployment, and scaling guide
+2. **[Configuration Guide](./configuration.md)** - Complete configuration reference
+3. **[Performance Optimization](./performance.md)** - Tuning guide for production
 
-## ⚡ Performance Optimization Guide
+### For QA/Testers
+1. **[Testing Guide](./testing.md)** - Unit tests, integration tests, and Postman collection usage
 
-### **Key Optimizations**
-1.  **Singleton Contexts**: `FhirContext` and `HapiContext` are reused as Spring beans (saving ~4s/request).
-2.  **Connection Pooling**: Tomcat (200 threads), RabbitMQ (25 channels), and MongoDB are tuned for high load.
-3.  **Redis Caching**: Sub-5ms response for active tenant configurations and transaction stats.
-4.  **Async I/O**: High-latency operations like audit logs are handled via background thread pools.
+### For Security Teams
+1. **[Security & Multi-Tenancy](./security.md)** - Authentication, authorization, and tenant isolation
 
-### **Production Configuration**
-- **JVM**: `-Xms2g -Xmx4g -XX:+UseG1GC -XX:MaxGCPauseMillis=200`
-- **Docker**: Limits: `2.0 CPU`, `4GB RAM`. Reservations: `1.0 CPU`, `2GB RAM`.
-- **RabbitMQ**: `prefetch=50`, `concurrency=5-10`.
+## License
 
----
+[Add your license information here]
 
-## 🛠️ Developer & Setup Guide
+## Support
 
-### 📋 Prerequisites
-- **Java 21** (Eclipse Temurin)
-- **Maven 3.9+**
-- **Docker & Docker Compose**
-
-### 🚀 Getting Started
-1. **Clone**: `git clone <repo_url>`
-2. **Launch Infra**: `docker-compose up -d fhir-mongo fhir-mq fhir-redis`
-3. **Run App**: `mvn clean spring-boot:run`
-4. **Onboard Tenant**: 
-   ```bash
-   ```bash
-   curl -X POST http://localhost:8090/api/tenants/onboard \
-     -u admin:password -H "Content-Type: application/json" \
-     -d '{"tenantId":"T1", "name":"Hospital A", "apiKey":"secret"}'
-   ```
-
-### 🧪 Testing
-- **Integration Tests**: `newman run postman/FHIR_Transformer.postman_collection.json -e postman/FHIRTransformer.local.postman_environment.json`
-- **Baseline**: 142 assertions across 44 tests (100% pass rate).
-
----
-
-## 📜 Release History
-
-### [1.5.0] - 2026-01-18
-- **Refactoring**: Modularized `Hl7ToFhirService` using Strategy Pattern.
-- **Components**: Extracted `Patient`, `Encounter`, `Observation`, and `Allergy` logic into dedicated converters.
-- **Architecture**: Improved maintainability and testability with `SegmentConverter` interface.
-
-### [1.4.0] - 2026-01-18
-- **Clinical Suite**: Added full mapping for `Immunization`, `Appointment`, and `ServiceRequest`.
-- **Actors**: Added `Practitioner` and `Organization` extraction with deduplication logic.
-
-### [1.3.0] - 2026-01-18
-- **DiagnosticReport**: Full HL7 `OBR` to FHIR mapping.
-- **Reliability**: OOM fixes, iteration limits, and 12-char date support.
-
-### [1.2.0] - 2026-01-17
-- **MedicationRequest**: Mapping for `RXE`, `RXO`, and `RXA` segments.
-
-### [1.1.0] - 2026-01-17
-- **Batch Processing**: Async conversion endpoints for high-volume data.
-- **Timezones**: Full preservation of HL7 timezone offsets.
-
----
-
-## 🎯 Strategic Roadmap
-
-### High Priority
-- **Database Terminology**: Replace hardcoded URLs with a configurable mapping service.
-- **Webhook Support**: Notify external systems upon conversion completion.
-- **OAuth 2.0 / SMART on FHIR**: upgrade from Basic Auth to industry standards.
-
-### Infrastructure
-- **Kubernetes**: Helm charts for cloud-native orchestration.
-- **CI/CD**: Automated testing and deployment pipelines.
-- **Grafana**: Pre-built dashboards for conversion success/fail trends.
-
----
-
-*This master documentation represents the complete state of the FHIR Transformer project.*
+For issues, questions, or contributions, please refer to the project's issue tracker.
