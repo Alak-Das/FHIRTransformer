@@ -20,11 +20,14 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/tenants")
+@Slf4j
 public class TenantController {
 
     private final TenantService tenantService;
@@ -80,9 +83,13 @@ public class TenantController {
                 .build());
     }
 
+    /**
+     * Onboard a new tenant with optional rate limit configuration.
+     */
     @PostMapping("/onboard")
     public ResponseEntity<Tenant> onboardTenant(@Valid @RequestBody TenantOnboardRequest request) {
-        Tenant tenant = tenantService.onboardTenant(request.getTenantId(), request.getPassword(), request.getName());
+        log.info("Received request to onboard tenant: {}", request.getTenantId());
+        Tenant tenant = tenantService.onboardTenant(request);
         return ResponseEntity.ok(tenant);
     }
 

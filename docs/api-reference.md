@@ -18,6 +18,13 @@ Content-Type: text/plain  (for HL7 messages)
 Content-Type: application/json  (for FHIR bundles, batch requests)
 ```
 
+### Rate Limiting Response Headers
+
+All authenticated API requests include rate limit information in response headers:
+- `X-RateLimit-Limit`: Maximum requests per minute for the tenant
+- `X-RateLimit-Remaining`: Requests remaining in current minute
+- `Retry-After`: (when 429) Seconds until rate limit resets
+
 ### Default Admin Credentials
 ```
 Username: admin
@@ -40,12 +47,18 @@ Password: password
 
 **Description**: Asynchronous conversion. Message is queued in RabbitMQ and processed in the background.
 
+**Headers**:
+- `Authorization`: Basic authentication (required)
+- `Content-Type`: text/plain (required)
+- `Idempotency-Key`: Client-generated unique key for duplicate prevention (optional, max 255 chars)
+
 **Request**:
 ```http
 POST /api/convert/v2-to-fhir HTTP/1.1
 Host: localhost:8090
 Authorization: Basic YWRtaW46cGFzc3dvcmQ=
 Content-Type: text/plain
+Idempotency-Key: unique-request-id-12345
 
 MSH|^~\&|SENDING|FACILITY|RECEIVING|FACILITY|20240119120000||ADT^A01|MSG001|P|2.5
 PID|1||12345||Doe^John||19800101|M|||123 Main St^^New York^NY^10001
@@ -60,6 +73,18 @@ Content-Type: application/json
 {
   "status": "Conversion initiated",
   "transactionId": "MSG001"
+}
+```
+
+**Duplicate Request Response** (same Idempotency-Key):
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "status": "Already processed",
+  "transactionId": "MSG001",
+  "originalStatus": "PROCESSED"
 }
 ```
 
@@ -82,10 +107,10 @@ Content-Type: application/json
 **Notes**:
 - Returns immediately with `202 Accepted`
 - Actual conversion happens asynchronously
+- **Retry Logic**: Failed messages automatically retry 3 times (5s → 15s → 45s delays) before routing to DLQ
+- **Idempotency**: Duplicate requests with same `Idempotency-Key` return cached result
 - Check transaction status via `/api/tenants/{tenantId}/transactions`
-- Failed messag
-
-es route to Dead Letter Queue (DLQ)
+- Final status after all retries exhausted: Routes to Dead Letter Queue (DLQ)
 
 ---
 
@@ -331,9 +356,16 @@ Authorization: Basic YWRtaW46cGFzc3dvcmQ=
 {
   "tenantId": "hospital_a",
   "password": "SecureP@ssw0rd",
-  "name": "Hospital A"
+  "name": "Hospital A",
+  "requestLimitPerMinute": 120
 }
 ```
+
+**Request Fields**:
+- `tenantId` (required): Unique identifier for the tenant
+- `password` (required): Password for authentication
+- `name` (optional): Display name for the tenant
+- `requestLimitPerMinute` (optional): Rate limit (default: 60)
 
 **Success Response**:
 ```http
@@ -343,6 +375,7 @@ HTTP/1.1 200 OK
   "id": "507f1f77bcf86cd799439013",
   "tenantId": "hospital_a",
   "name": "Hospital A",
+  "requestLimitPerMinute": 120,
   "createdAt": "2024-01-19T12:00:00"
 }
 ```

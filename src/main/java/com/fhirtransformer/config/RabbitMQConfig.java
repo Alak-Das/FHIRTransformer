@@ -67,6 +67,59 @@ public class RabbitMQConfig {
                 .noargs();
     }
 
+    // --- Retry Queues for HL7→FHIR (Exponential Backoff: 5s, 15s, 45s) ---
+
+    @Bean
+    Queue hl7RetryQueue1() {
+        return QueueBuilder.durable("hl7-messages-retry-1")
+                .withArgument("x-message-ttl", 5000) // 5 seconds delay
+                .withArgument("x-dead-letter-exchange", exchangeName)
+                .withArgument("x-dead-letter-routing-key", routingKey)
+                .build();
+    }
+
+    @Bean
+    Binding hl7RetryBinding1() {
+        return BindingBuilder.bind(hl7RetryQueue1())
+                .to(exchange())
+                .with("hl7.retry.1")
+                .noargs();
+    }
+
+    @Bean
+    Queue hl7RetryQueue2() {
+        return QueueBuilder.durable("hl7-messages-retry-2")
+                .withArgument("x-message-ttl", 15000) // 15 seconds delay
+                .withArgument("x-dead-letter-exchange", exchangeName)
+                .withArgument("x-dead-letter-routing-key", routingKey)
+                .build();
+    }
+
+    @Bean
+    Binding hl7RetryBinding2() {
+        return BindingBuilder.bind(hl7RetryQueue2())
+                .to(exchange())
+                .with("hl7.retry.2")
+                .noargs();
+    }
+
+    @Bean
+    Queue hl7RetryQueue3() {
+        return QueueBuilder.durable("hl7-messages-retry-3")
+                .withArgument("x-message-ttl", 45000) // 45 seconds delay
+                .withArgument("x-dead-letter-exchange", dlxName) // Final retry → DLQ
+                .withArgument("x-dead-letter-routing-key", dlRoutingKey)
+                .build();
+    }
+
+    @Bean
+    Binding hl7RetryBinding3() {
+        return BindingBuilder.bind(hl7RetryQueue3())
+                .to(exchange())
+                .with("hl7.retry.3")
+                .noargs();
+    }
+
     @Bean
     Exchange exchange() {
         return ExchangeBuilder.topicExchange(exchangeName).durable(true).build();
@@ -144,6 +197,59 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(fhirDlq())
                 .to(fhirDlx())
                 .with(fhirDlRoutingKey)
+                .noargs();
+    }
+
+    // --- Retry Queues for FHIR→HL7 (Exponential Backoff: 5s, 15s, 45s) ---
+
+    @Bean
+    Queue fhirRetryQueue1() {
+        return QueueBuilder.durable("fhir-to-v2-retry-1")
+                .withArgument("x-message-ttl", 5000) // 5 seconds delay
+                .withArgument("x-dead-letter-exchange", fhirExchangeName)
+                .withArgument("x-dead-letter-routing-key", fhirRoutingKey)
+                .build();
+    }
+
+    @Bean
+    Binding fhirRetryBinding1() {
+        return BindingBuilder.bind(fhirRetryQueue1())
+                .to(fhirExchange())
+                .with("fhir.retry.1")
+                .noargs();
+    }
+
+    @Bean
+    Queue fhirRetryQueue2() {
+        return QueueBuilder.durable("fhir-to-v2-retry-2")
+                .withArgument("x-message-ttl", 15000) // 15 seconds delay
+                .withArgument("x-dead-letter-exchange", fhirExchangeName)
+                .withArgument("x-dead-letter-routing-key", fhirRoutingKey)
+                .build();
+    }
+
+    @Bean
+    Binding fhirRetryBinding2() {
+        return BindingBuilder.bind(fhirRetryQueue2())
+                .to(fhirExchange())
+                .with("fhir.retry.2")
+                .noargs();
+    }
+
+    @Bean
+    Queue fhirRetryQueue3() {
+        return QueueBuilder.durable("fhir-to-v2-retry-3")
+                .withArgument("x-message-ttl", 45000) // 45 seconds delay
+                .withArgument("x-dead-letter-exchange", fhirDlxName) // Final retry → DLQ
+                .withArgument("x-dead-letter-routing-key", fhirDlRoutingKey)
+                .build();
+    }
+
+    @Bean
+    Binding fhirRetryBinding3() {
+        return BindingBuilder.bind(fhirRetryQueue3())
+                .to(fhirExchange())
+                .with("fhir.retry.3")
                 .noargs();
     }
 }

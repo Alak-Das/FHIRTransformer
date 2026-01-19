@@ -24,6 +24,12 @@ public class AuditService {
 
     @Async
     public void logTransaction(String tenantId, String transactionId, MessageType type, TransactionStatus status) {
+        logTransaction(tenantId, transactionId, type, status, null);
+    }
+
+    @Async
+    public void logTransaction(String tenantId, String transactionId, MessageType type, TransactionStatus status,
+            String idempotencyKey) {
         try {
             TransactionRecord record = new TransactionRecord();
             record.setTenantId(tenantId);
@@ -31,6 +37,7 @@ public class AuditService {
             record.setMessageType(type.name());
             record.setStatus(status.name());
             record.setTimestamp(LocalDateTime.now());
+            record.setIdempotencyKey(idempotencyKey); // Set idempotency key if provided
             transactionRepository.save(record);
         } catch (Exception e) {
             log.error("Failed to save transaction log for ID {}: {}", transactionId, e.getMessage(), e);

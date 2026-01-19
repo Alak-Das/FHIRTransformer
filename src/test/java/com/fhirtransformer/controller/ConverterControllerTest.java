@@ -49,6 +49,9 @@ public class ConverterControllerTest {
         @Mock
         private AuditService auditService;
 
+        @Mock
+        private com.fhirtransformer.service.IdempotencyService idempotencyService;
+
         private ObjectMapper objectMapper = new ObjectMapper();
 
         @BeforeEach
@@ -56,7 +59,7 @@ public class ConverterControllerTest {
                 MockitoAnnotations.openMocks(this);
                 ConverterController controller = new ConverterController(
                                 hl7ToFhirService, fhirToHl7Service, batchConversionService, rabbitTemplate,
-                                messageEnrichmentService, auditService, objectMapper);
+                                messageEnrichmentService, auditService, idempotencyService, objectMapper);
 
                 ReflectionTestUtils.setField(controller, "exchange", "test-exchange");
                 ReflectionTestUtils.setField(controller, "routingKey", "test-routing-key");

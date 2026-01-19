@@ -81,7 +81,7 @@ public class BatchConversionService {
                             msgEndTime - msgStartTime,
                             messageId);
                 } catch (Exception e) {
-                    log.error("Failed to convert message at index {}: {}", index, e.getMessage());
+                    log.error("Failed to convert message at index {}", index, e);
                     // Return null to indicate failure
                     return null;
                 }
@@ -165,7 +165,8 @@ public class BatchConversionService {
                             msgEndTime - msgStartTime,
                             messageId);
                 } catch (Exception e) {
-                    log.error("Failed to convert bundle at index {}: {}", index, e.getMessage());
+                    log.error("Failed to convert bundle at index {}", index, e);
+                    // Return null to indicate failure, error details will be collected later
                     return null;
                 }
             }, executorService);

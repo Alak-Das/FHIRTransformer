@@ -263,7 +263,7 @@ public class MedicationConverter implements SegmentConverter<MedicationRequest> 
                     log.debug("Mapped MedicationRequest: {}", medRequest.getId());
                     segmentCount++;
                 } catch (Exception e) {
-                    log.error("Error converting {} at {}: {}", segmentName, mainPathToUse, e.getMessage());
+                    log.error("Error converting {} at {}", segmentName, mainPathToUse, e);
                     segmentCount++;
                 }
             }

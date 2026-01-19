@@ -1,5 +1,6 @@
 package com.fhirtransformer.service;
 
+import com.fhirtransformer.dto.TenantOnboardRequest;
 import com.fhirtransformer.model.Tenant;
 import com.fhirtransformer.repository.TenantRepository;
 import org.junit.jupiter.api.Test;
@@ -29,31 +30,39 @@ public class TenantServiceTest {
 
     @Test
     public void testOnboardTenant_Success() {
-        String tenantId = "tenant1";
-        String password = "password123";
-        String name = "Test Hospital";
+        TenantOnboardRequest request = new TenantOnboardRequest();
+        request.setTenantId("tenant1");
+        request.setPassword("password123");
+        request.setName("Test Hospital");
+        request.setRequestLimitPerMinute(60);
 
-        when(tenantRepository.findByTenantId(tenantId)).thenReturn(Optional.empty());
-        when(passwordEncoder.encode(password)).thenReturn("encodedPassword");
+        when(tenantRepository.findByTenantId(request.getTenantId())).thenReturn(Optional.empty());
+        when(passwordEncoder.encode(request.getPassword())).thenReturn("encodedPassword");
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Tenant result = tenantService.onboardTenant(tenantId, password, name);
+        Tenant result = tenantService.onboardTenant(request);
 
         assertNotNull(result);
-        assertEquals(tenantId, result.getTenantId());
+        assertEquals(request.getTenantId(), result.getTenantId());
         assertEquals("encodedPassword", result.getPassword());
-        assertEquals(name, result.getName());
+        assertEquals(request.getName(), result.getName());
+        assertEquals(request.getRequestLimitPerMinute(), result.getRequestLimitPerMinute());
 
         verify(tenantRepository).save(any(Tenant.class));
     }
 
     @Test
     public void testOnboardTenant_AlreadyExists() {
-        String tenantId = "tenant1";
-        when(tenantRepository.findByTenantId(tenantId)).thenReturn(Optional.of(new Tenant()));
+        TenantOnboardRequest request = new TenantOnboardRequest();
+        request.setTenantId("tenant1");
+        request.setPassword("password");
+        request.setName("Test Tenant");
+        request.setRequestLimitPerMinute(60);
 
-        assertThrows(RuntimeException.class, () -> {
-            tenantService.onboardTenant(tenantId, "password", "name");
+        when(tenantRepository.findByTenantId(request.getTenantId())).thenReturn(Optional.of(new Tenant()));
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            tenantService.onboardTenant(request);
         });
 
         verify(tenantRepository, never()).save(any(Tenant.class));

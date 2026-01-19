@@ -5,12 +5,14 @@ import lombok.Data;
 
 @Data
 public class TenantOnboardRequest {
-    @NotBlank(message = "Tenant ID is required")
+    @NotBlank(message = "Tenant ID cannot be blank")
     private String tenantId;
 
-    @NotBlank(message = "Password is required")
+    @NotBlank(message = "Password cannot be blank")
     private String password;
 
-    @NotBlank(message = "Name is required")
     private String name;
+
+    // Optional: Rate limit in requests per minute (default: 60)
+    private Integer requestLimitPerMinute = 60;
 }

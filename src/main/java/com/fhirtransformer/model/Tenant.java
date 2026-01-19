@@ -14,4 +14,7 @@ public class Tenant {
     @JsonIgnore
     private String password;
     private String name;
+
+    // Rate limiting: requests per minute (default: 60)
+    private Integer requestLimitPerMinute = 60;
 }

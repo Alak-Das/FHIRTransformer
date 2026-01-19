@@ -5,10 +5,14 @@ import com.fhirtransformer.dto.EnrichedMessage;
 import com.fhirtransformer.model.enums.MessageType;
 import com.fhirtransformer.model.enums.TransactionStatus;
 import com.fhirtransformer.service.AuditService;
+import com.fhirtransformer.service.IdempotencyService;
+import com.fhirtransformer.model.TransactionRecord;
+import org.springframework.web.bind.annotation.RequestHeader;
 import ca.uhn.fhir.parser.DataFormatException;
 import ca.uhn.hl7v2.HL7Exception;
 import ca.uhn.hl7v2.parser.EncodingNotSupportedException;
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fhirtransformer.exception.FhirValidationException;
 import lombok.extern.slf4j.Slf4j;
 import com.fhirtransformer.service.FhirToHl7Service;
 import com.fhirtransformer.service.Hl7ToFhirService;
@@ -45,6 +49,7 @@ public class ConverterController {
     private final RabbitTemplate rabbitTemplate;
     private final MessageEnrichmentService messageEnrichmentService;
     private final AuditService auditService;
+    private final IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
 
     @Value("${app.rabbitmq.exchange}")
@@ -66,6 +71,7 @@ public class ConverterController {
             RabbitTemplate rabbitTemplate,
             MessageEnrichmentService messageEnrichmentService,
             AuditService auditService,
+            IdempotencyService idempotencyService,
             ObjectMapper objectMapper) {
         this.hl7ToFhirService = hl7ToFhirService;
         this.fhirToHl7Service = fhirToHl7Service;
@@ -73,18 +79,38 @@ public class ConverterController {
         this.rabbitTemplate = rabbitTemplate;
         this.messageEnrichmentService = messageEnrichmentService;
         this.auditService = auditService;
+        this.idempotencyService = idempotencyService;
         this.objectMapper = objectMapper;
     }
 
     @PostMapping(value = "/v2-to-fhir", consumes = MediaType.TEXT_PLAIN_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> convertToFhir(@RequestBody String hl7Message, Principal principal) throws Exception {
+    public ResponseEntity<String> convertToFhir(
+            @RequestBody String hl7Message,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            Principal principal) throws Exception {
+
+        String tenantId = getTenantId(principal);
+
+        // Check for duplicate request using idempotency key
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            java.util.Optional<TransactionRecord> existing = idempotencyService.findByIdempotencyKey(idempotencyKey);
+            if (existing.isPresent()) {
+                TransactionRecord record = existing.get();
+                log.info("Duplicate request detected for idempotency key: {}", idempotencyKey);
+                Map<String, String> response = new HashMap<>();
+                response.put("status", "Already processed");
+                response.put("transactionId", record.getTransactionId());
+                response.put("originalStatus", record.getStatus());
+                return ResponseEntity.ok(objectMapper.writeValueAsString(response));
+            }
+        }
+
         EnrichedMessage enriched = messageEnrichmentService.ensureHl7TransactionId(hl7Message);
         String transactionId = enriched.getTransactionId();
         String processedMessage = enriched.getContent();
-        String tenantId = getTenantId(principal);
 
         auditService.logTransaction(tenantId, transactionId,
-                MessageType.V2_TO_FHIR_ASYNC, TransactionStatus.ACCEPTED);
+                MessageType.V2_TO_FHIR_ASYNC, TransactionStatus.ACCEPTED, idempotencyKey);
 
         rabbitTemplate.convertAndSend(exchange, routingKey, processedMessage, message -> {
             message.getMessageProperties().setHeader("tenantId", tenantId);
@@ -110,13 +136,33 @@ public class ConverterController {
     }
 
     @PostMapping(value = "/fhir-to-v2", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> convertToHl7(@RequestBody String fhirJson, Principal principal) throws Exception {
+    public ResponseEntity<String> convertToHl7(
+            @RequestBody String fhirJson,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            Principal principal) throws Exception {
+
+        String tenantId = getTenantId(principal);
+
+        // Check for duplicate request using idempotency key
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            java.util.Optional<TransactionRecord> existing = idempotencyService.findByIdempotencyKey(idempotencyKey);
+            if (existing.isPresent()) {
+                TransactionRecord record = existing.get();
+                log.info("Duplicate request detected for idempotency key: {}", idempotencyKey);
+                Map<String, String> response = new HashMap<>();
+                response.put("status", "Already processed");
+                response.put("transactionId", record.getTransactionId());
+                response.put("originalStatus", record.getStatus());
+                return ResponseEntity.ok(objectMapper.writeValueAsString(response));
+            }
+        }
+
         EnrichedMessage enriched = messageEnrichmentService.ensureFhirTransactionId(fhirJson);
         String transactionId = enriched.getTransactionId();
         String processedJson = enriched.getContent();
 
-        auditService.logTransaction(getTenantId(principal), transactionId,
-                MessageType.FHIR_TO_V2_ASYNC, TransactionStatus.QUEUED);
+        auditService.logTransaction(tenantId, transactionId,
+                MessageType.FHIR_TO_V2_ASYNC, TransactionStatus.QUEUED, idempotencyKey);
 
         rabbitTemplate.convertAndSend(fhirExchange, fhirRoutingKey, processedJson);
 
@@ -193,6 +239,21 @@ public class ConverterController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Handle FHIR validation exceptions with detailed field-level errors
+     */
+    @ExceptionHandler(FhirValidationException.class)
+    public ResponseEntity<Map<String, Object>> handleFhirValidationException(FhirValidationException e) {
+        log.error("FHIR validation failed: {}", e.getMessage(), e);
+
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("status", "Validation Error");
+        errorResponse.put("message", e.getMessage());
+        errorResponse.put("validationErrors", e.getValidationErrors());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleException(Exception e) {
         log.error("Unhandled exception in ConverterController: {}", e.getMessage(), e);
@@ -200,11 +261,6 @@ public class ConverterController {
         errorResponse.put("status", "Error");
         errorResponse.put("message", e.getMessage());
         errorResponse.put("type", e.getClass().getSimpleName());
-
-        if (e.getMessage() != null && e.getMessage().contains("FHIR Validation Failed")) {
-            errorResponse.put("details", "FHIR validation failed. Check server logs for full details.");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-        }
 
         if (e instanceof HL7Exception || e instanceof EncodingNotSupportedException || e instanceof DataFormatException
                 || e instanceof JsonParseException || e instanceof IllegalArgumentException) {

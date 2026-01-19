@@ -9,4 +9,6 @@ import java.util.Optional;
 @Repository
 public interface TenantRepository extends MongoRepository<Tenant, String> {
     Optional<Tenant> findByTenantId(String tenantId);
+
+    void deleteByTenantId(String tenantId);
 }

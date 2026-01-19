@@ -24,4 +24,8 @@ public class TransactionRecord {
     private String messageType; // e.g., "V2_TO_FHIR", "FHIR_TO_V2"
     private LocalDateTime timestamp;
     private String status; // "ACCEPTED", "COMPLETED", "FAILED"
+
+    // Idempotency support: sparse index allows null values (optional header)
+    @Indexed(unique = true, sparse = true)
+    private String idempotencyKey;
 }

@@ -15,14 +15,18 @@ import java.util.Optional;
 @Repository
 public interface TransactionRepository extends MongoRepository<TransactionRecord, String> {
 
-    @Aggregation(pipeline = {
-            "{ $match: { tenantId: ?0, timestamp: { $gte: ?1, $lte: ?2 } } }",
-            "{ $group: { _id: '$status', count: { $sum: 1 } } }"
-    })
-    List<StatusCount> countStatusByTenantIdAndTimestampBetween(String tenantId, LocalDateTime start, LocalDateTime end);
+        @Aggregation(pipeline = {
+                        "{ $match: { tenantId: ?0, timestamp: { $gte: ?1, $lte: ?2 } } }",
+                        "{ $group: { _id: '$status', count: { $sum: 1 } } }"
+        })
+        List<StatusCount> countStatusByTenantIdAndTimestampBetween(String tenantId, LocalDateTime start,
+                        LocalDateTime end);
 
-    Page<TransactionRecord> findByTenantIdAndTimestampBetween(String tenantId, LocalDateTime start, LocalDateTime end,
-            Pageable pageable);
+        Page<TransactionRecord> findByTenantIdAndTimestampBetween(String tenantId, LocalDateTime start,
+                        LocalDateTime end,
+                        Pageable pageable);
 
-    Optional<TransactionRecord> findByTransactionId(String transactionId);
+        Optional<TransactionRecord> findByTransactionId(String transactionId);
+
+        Optional<TransactionRecord> findByIdempotencyKey(String idempotencyKey);
 }

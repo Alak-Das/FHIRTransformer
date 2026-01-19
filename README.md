@@ -25,7 +25,10 @@ FHIR Transformer is an enterprise-grade, high-performance bidirectional message 
 - **Role-Based Access Control**: Granular permissions (ADMIN, TENANT roles)
 - **Distributed Caching**: Redis-based caching with configurable TTL
 - **Transaction Auditing**: Comprehensive audit logs with status tracking (ACCEPTED, PROCESSED, FAILED)
-- **Dead Letter Queue**: Automatic DLQ handling for failed messages
+- **Idempotency Support**: RFC 7231-compliant duplicate request prevention via `Idempotency-Key` header
+- **Automatic Retry Logic**: 3-tier exponential backoff (5s → 15s → 45s) for transient failures
+- **Per-Tenant Rate Limiting**: Configurable requests-per-minute limits with Redis-based tracking
+- **Dead Letter Queue**: Automatic DLQ handling for failed messages after retries
 - **Metrics & Monitoring**: Prometheus-compatible metrics via Spring Actuator
 
 ### Technical Stack
@@ -97,6 +100,14 @@ docker-compose up -d
 # Convert HL7 to FHIR (Sync)
 curl -X POST http://localhost:8090/api/convert/v2-to-fhir-sync \
   -H "Content-Type: text/plain" \
+  -u admin:password \
+  --data "MSH|^~\&|SENDING|FACILITY|RECEIVING|FACILITY|20240119120000||ADT^A01|MSG001|P|2.5
+PID|1||12345||Doe^John||19800101|M|||123 Main St^^New York^NY^10001"
+
+# Convert HL7 to FHIR (Async with Idempotency)
+curl -X POST http://localhost:8090/api/convert/v2-to-fhir \
+  -H "Content-Type: text/plain" \
+  -H "Idempotency-Key: unique-request-123" \
   -u admin:password \
   --data "MSH|^~\&|SENDING|FACILITY|RECEIVING|FACILITY|20240119120000||ADT^A01|MSG001|P|2.5
 PID|1||12345||Doe^John||19800101|M|||123 Main St^^New York^NY^10001"
