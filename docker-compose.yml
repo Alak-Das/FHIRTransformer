@@ -44,7 +44,7 @@ services:
       retries: 5
 
   mongo:
-    image: mongo:latest
+    image: mongo:7.0
     # ports removed to avoid bind errors
 
     container_name: fhir-mongo
