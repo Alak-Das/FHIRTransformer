@@ -1,10 +1,10 @@
 services:
-  fhir-transformer:
+  fhirhl7-transformer:
     build: .
     ports:
       - "8090:8080"
     restart: unless-stopped
-    container_name: fhir-transformer
+    container_name: fhirhl7-transformer
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -14,9 +14,11 @@ services:
         condition: service_healthy
     environment:
       SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/fhirtransformer
+      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/fhirhl7transformer
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      SPRING_RABBITMQ_USERNAME: fhiruser
+      SPRING_RABBITMQ_PASSWORD: fhirpass
     volumes:
       - ./src/main/resources/application.properties:/app/config/application.properties
     deploy:
@@ -32,6 +34,9 @@ services:
 
     container_name: fhir-mq
     restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: fhiruser
+      RABBITMQ_DEFAULT_PASS: fhirpass
     healthcheck:
       test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
       interval: 30s

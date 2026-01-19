@@ -1,8 +1,8 @@
-# FHIR Transformer Documentation
+# FHIR<->HL7-Transformer Documentation
 
 ## Overview
 
-FHIR Transformer is an enterprise-grade, high-performance bidirectional message conversion engine that transforms HL7 v2.x messages into FHIR R4 resources and vice versa. Built on Spring Boot 4.0.1 with Java 21, it employs asynchronous message processing via RabbitMQ, multi-tenant architecture, role-based access control, and distributed caching for optimal performance.
+FHIR<->HL7-Transformer is an enterprise-grade, high-performance bidirectional message conversion engine that transforms HL7 v2.x messages into FHIR R4 resources and vice versa. Built on Spring Boot 4.0.1 with Java 21, it employs asynchronous message processing via RabbitMQ, multi-tenant architecture, role-based access control, and distributed caching for optimal performance.
 
 ## Quick Links
 
@@ -83,14 +83,14 @@ FHIR Transformer is an enterprise-grade, high-performance bidirectional message 
 ```bash
 # Clone repository
 git clone <repository-url>
-cd FHIRTransformer
+cd fhirhl7transformer
 
 # Start infrastructure services
 docker-compose up -d
 
 # Application runs on http://localhost:8090
 # RabbitMQ Management UI: http://localhost:15672 (guest/guest)
-# MongoDB: mongodb://localhost:27017/fhirtransformer
+# MongoDB: mongodb://localhost:27017/fhirhl7transformer
 # Redis: redis://localhost:6379
 ```
 
@@ -116,8 +116,8 @@ PID|1||12345||Doe^John||19800101|M|||123 Main St^^New York^NY^10001"
 ## Project Structure
 
 ```
-FHIRTransformer/
-├── src/main/java/com/fhirtransformer/
+fhirhl7transformer/
+├── src/main/java/com/fhirhl7transformer/
 │   ├── config/              # Configuration classes (Security, RabbitMQ, Cache, etc.)
 │   ├── controller/          # REST controllers (Converter, Tenant)
 │   ├── dto/                 # Data Transfer Objects

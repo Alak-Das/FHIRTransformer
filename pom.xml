@@ -8,10 +8,10 @@
 		<version>4.0.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.fhirtransformer</groupId>
-	<artifactId>fhir-transformer</artifactId>
+	<groupId>com.al.fhirhl7transformer</groupId>
+	<artifactId>fhirhl7-transformer</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>FHIR Transformer</name>
+	<name>FHIR&lt;-&gt;HL7-Transformer</name>
 	<description>A tool to convert HL7 v2 messages to FHIR R4 and vice versa</description>
 	<properties>
 		<java.version>21</java.version>
@@ -138,6 +138,19 @@
 							<artifactId>lombok</artifactId>
 						</exclude>
 					</excludes>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>1.18.30</version>
+						</path>
+					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
 		</plugins>
