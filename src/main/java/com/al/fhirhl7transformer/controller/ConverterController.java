@@ -40,9 +40,18 @@ import com.al.fhirhl7transformer.dto.BatchHl7Request;
 import com.al.fhirhl7transformer.service.BatchConversionService;
 import com.al.fhirhl7transformer.service.AckMessageService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 @RestController
 @RequestMapping("/api/convert")
 @Slf4j
+@Tag(name = "Conversion", description = "HL7 v2.x ↔ FHIR R4 bidirectional conversion endpoints")
 public class ConverterController {
 
     private final Hl7ToFhirService hl7ToFhirService;
@@ -88,10 +97,16 @@ public class ConverterController {
         this.ackMessageService = ackMessageService;
     }
 
+    @Operation(summary = "Convert HL7 v2 to FHIR (Async)", description = "Queues an HL7 v2.x message for asynchronous conversion to FHIR R4. Returns transaction ID for status tracking.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "202", description = "Message accepted for processing"),
+            @ApiResponse(responseCode = "400", description = "Invalid HL7 message format"),
+            @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     @PostMapping(value = "/v2-to-fhir", consumes = MediaType.TEXT_PLAIN_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> convertToFhir(
-            @RequestBody String hl7Message,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @Parameter(description = "HL7 v2.x message in pipe-delimited format") @RequestBody String hl7Message,
+            @Parameter(description = "Unique key for idempotent requests") @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             HttpServletResponse response,
             Principal principal) throws Exception {
 
@@ -128,8 +143,15 @@ public class ConverterController {
         return createAcceptedResponse(transactionId);
     }
 
+    @Operation(summary = "Convert HL7 v2 to FHIR (Sync)", description = "Synchronously converts an HL7 v2.x message to FHIR R4 Bundle. Returns the converted FHIR JSON directly.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Successful conversion"),
+            @ApiResponse(responseCode = "400", description = "Invalid HL7 message or validation error"),
+            @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     @PostMapping(value = "/v2-to-fhir-sync", consumes = MediaType.TEXT_PLAIN_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> convertToFhirSync(@RequestBody String hl7Message,
+    public ResponseEntity<String> convertToFhirSync(
+            @Parameter(description = "HL7 v2.x message in pipe-delimited format") @RequestBody String hl7Message,
             HttpServletResponse response, Principal principal)
             throws Exception {
         try {
@@ -170,10 +192,16 @@ public class ConverterController {
         }
     }
 
+    @Operation(summary = "Convert FHIR to HL7 v2 (Async)", description = "Queues a FHIR R4 Bundle for asynchronous conversion to HL7 v2.x. Returns transaction ID for status tracking.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "202", description = "Bundle accepted for processing"),
+            @ApiResponse(responseCode = "400", description = "Invalid FHIR Bundle format"),
+            @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     @PostMapping(value = "/fhir-to-v2", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> convertToHl7(
-            @RequestBody String fhirJson,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @Parameter(description = "FHIR R4 Bundle in JSON format") @RequestBody String fhirJson,
+            @Parameter(description = "Unique key for idempotent requests") @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             HttpServletResponse response,
             Principal principal) throws Exception {
 
@@ -207,8 +235,15 @@ public class ConverterController {
         return createAcceptedResponse(transactionId);
     }
 
+    @Operation(summary = "Convert FHIR to HL7 v2 (Sync)", description = "Synchronously converts a FHIR R4 Bundle to HL7 v2.x message. Returns the converted HL7 message directly.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Successful conversion"),
+            @ApiResponse(responseCode = "400", description = "Invalid FHIR Bundle or validation error"),
+            @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     @PostMapping(value = "/fhir-to-v2-sync", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.TEXT_PLAIN_VALUE)
-    public ResponseEntity<String> convertToHl7Sync(@RequestBody String fhirJson,
+    public ResponseEntity<String> convertToHl7Sync(
+            @Parameter(description = "FHIR R4 Bundle in JSON format") @RequestBody String fhirJson,
             HttpServletResponse response, Principal principal) throws Exception {
         EnrichedMessage enriched = messageEnrichmentService.ensureFhirTransactionId(fhirJson);
         String transactionId = enriched.getTransactionId();
