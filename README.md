@@ -172,7 +172,7 @@ HL7FHIRTransformer/
 **Proprietary and Confidential.**
 
 All rights reserved. Unauthorized copying of this file, via any medium is strictly prohibited.
-For licensing inquiries, please contact sales@example.com.
+For licensing inquiries, please contact alakdas.mail@gmail.com.
 
 ## Support
 
