@@ -1,10 +1,10 @@
 services:
-  fhirhl7-transformer:
+  hl7-fhir-transformer:
     build: .
     ports:
       - "8090:8080"
     restart: unless-stopped
-    container_name: fhirhl7-transformer
+    container_name: hl7-fhir-transformer
     depends_on:
       rabbitmq:
         condition: service_healthy

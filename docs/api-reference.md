@@ -225,7 +225,7 @@ Content-Type: application/json
 HTTP/1.1 200 OK
 Content-Type: text/plain
 
-MSH|^~\&|fhirhl7transformer||LegacyApp||20240119120000||ADT^A01^ADT_A01|MSG001|P|2.5
+MSH|^~\&|HL7FHIRTransformer||LegacyApp||20240119120000||ADT^A01^ADT_A01|MSG001|P|2.5
 PID|1||12345|||Doe^John||19800101|M
 ```
 
@@ -472,7 +472,7 @@ HTTP/1.1 200 OK
   },
   "transactions": [
     {
-      "fhirhl7transformerId": "txn-mongo-id-123",
+      "HL7FHIRTransformerId": "txn-mongo-id-123",
       "originalMessageId": "MSG001",
       "messageType": "V2_TO_FHIR",
       "status": "PROCESSED",
@@ -595,12 +595,12 @@ curl -X GET "http://localhost:8090/api/tenants/admin/transactions?startDate=2024
 
 ### Postman Collection
 
-A comprehensive Postman collecti[Download Postman Collection](./postman/fhirhl7-transformer.postman_collection.json)
+A comprehensive Postman collecti[Download Postman Collection](./postman/hl7-fhir-transformer.postman_collection.json)
 
 ### Running with Newman
 ```bash
-newman run postman/fhirhl7-transformer.postman_collection.json \
-  -e postman/fhirhl7-transformer.local.postman_environment.json
+newman run postman/hl7-fhir-transformer.postman_collection.json \
+  -e postman/hl7-fhir-transformer.local.postman_environment.json
 ```
 
 ---

@@ -18,7 +18,7 @@ All configuration is defined in `src/main/resources/application.properties`. Ove
 server.port=8080
 
 # Application Name
-spring.application.name=fhirhl7-transformer
+spring.application.name=HL7FHIRTransformer
 
 # HTTP/2 Support
 server.http2.enabled=true
@@ -116,7 +116,7 @@ spring.rabbitmq.listener.simple.prefetch=100
 ### MongoDB
 ```properties
 # Connection URI
-spring.data.mongodb.uri=${MONGODB_URI:mongodb://mongo:27017/fhirhl7transformer}
+spring.data.mongodb.uri=${MONGODB_URI:mongodb://mongo:27017/HL7FHIRTransformer}
 
 # Auto-Index Creation (creates indexes on @Indexed fields)
 spring.data.mongodb.auto-index-creation=true
@@ -124,7 +124,7 @@ spring.data.mongodb.auto-index-creation=true
 
 **Production MongoDB with Authentication**:
 ```properties
-spring.data.mongodb.uri=mongodb://username:password@prod-mongo-cluster:27017,prod-mongo-cluster:27018,prod-mongo-cluster:27019/fhirhl7transformer?replicaSet=rs0&authSource=admin
+spring.data.mongodb.uri=mongodb://username:password@prod-mongo-cluster:27017,prod-mongo-cluster:27018,prod-mongo-cluster:27019/HL7FHIRTransformer?replicaSet=rs0&authSource=admin
 ```
 
 ### Redis (Caching)
@@ -279,7 +279,7 @@ public RedisCacheManagerBuilderCustomizer redisCacheManagerBuilderCustomizer() {
 ### Log Levels
 ```properties
 # Application Logs
-logging.level.com.fhirhl7transformer=${LOG_LEVEL:INFO}
+logging.level.com.HL7FHIRTransformer=${LOG_LEVEL:INFO}
 
 # Spring Security Logs (reduce noise)
 logging.level.org.springframework.security=${SECURITY_LOG_LEVEL:WARN}
@@ -303,9 +303,9 @@ Create `src/main/resources/logback-spring.xml`:
 ```xml
 <configuration>
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>/var/log/fhirhl7-transformer/application.log</file>
+        <file>/var/log/HL7FHIRTransformer/application.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>/var/log/fhirhl7-transformer/application-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <fileNamePattern>/var/log/HL7FHIRTransformer/application-%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <encoder>
@@ -364,7 +364,7 @@ management.metrics.export.prometheus.enabled=true
 ### Create `application-prod.properties`
 ```properties
 # Production-specific overrides
-logging.level.com.fhirhl7transformer=WARN
+logging.level.com.HL7FHIRTransformer=WARN
 spring.cache.redis.time-to-live=7200000
 server.tomcat.threads.max=500
 ```
@@ -378,7 +378,7 @@ export SPRING_PROFILES_ACTIVE=prod
 java -jar app.jar --spring.profiles.active=prod
 
 # In Docker
-docker run -e SPRING_PROFILES_ACTIVE=prod fhirhl7-transformer
+docker run -e SPRING_PROFILES_ACTIVE=prod HL7FHIRTransformer
 ```
 
 ---
@@ -417,7 +417,7 @@ app.admin.username=${ADMIN_USERNAME}
 app.admin.password=${ADMIN_PASSWORD}
 
 # Logging
-logging.level.com.fhirhl7transformer=WARN
+logging.level.com.HL7FHIRTransformer=WARN
 logging.level.org.springframework.security=ERROR
 
 # Performance
@@ -433,11 +433,11 @@ management.endpoint.health.show-details=always
 ### Docker Compose Environment Variables
 ```yaml
 services:
-  fhirhl7-transformer:
-    image: fhirhl7-transformer:latest
+  HL7FHIRTransformer:
+    image: HL7FHIRTransformer:latest
     environment:
       - SPRING_PROFILES_ACTIVE=prod
-      - MONGODB_URI=mongodb://mongo:27017/fhirhl7transformer
+      - MONGODB_URI=mongodb://mongo:27017/HL7FHIRTransformer
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_USERNAME=admin
       - RABBITMQ_PASSWORD=${RABBITMQ_ADMIN_PASS}
@@ -452,7 +452,7 @@ services:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: fhirhl7-transformer-config
+  name: HL7FHIRTransformer-config
 data:
   RABBITMQ_HOST: "rabbitmq-service"
   REDIS_HOST: "redis-service"
@@ -461,10 +461,10 @@ data:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: fhirhl7-transformer-secrets
+  name: HL7FHIRTransformer-secrets
 type: Opaque
 stringData:
-  MONGODB_URI: "mongodb://username:password@mongo-cluster:27017/fhirhl7transformer"
+  MONGODB_URI: "mongodb://username:password@mongo-cluster:27017/HL7FHIRTransformer"
   ADMIN_USERNAME: "prod-admin"
   ADMIN_PASSWORD: "Str0ng!P@ssw0rd"
   RABBITMQ_USERNAME: "rmq-admin"
@@ -478,16 +478,16 @@ stringData:
 ### Verify Configuration at Startup
 ```bash
 # Check logs for configuration binding
-docker logs fhirhl7-transformer | grep "Started fhirhl7transformerApplication"
+docker logs HL7FHIRTransformer | grep "Started HL7FHIRTransformerApplication"
 
 # Verify MongoDB connection
-docker logs fhirhl7-transformer | grep "Cluster created with settings"
+docker logs HL7FHIRTransformer | grep "Cluster created with settings"
 
 # Verify RabbitMQ connection
-docker logs fhirhl7-transformer | grep "Created new connection"
+docker logs HL7FHIRTransformer | grep "Created new connection"
 
 # Verify Redis connection
-docker logs fhirhl7-transformer | grep "Lettuce"
+docker logs HL7FHIRTransformer | grep "Lettuce"
 ```
 
 ### Test Configuration via Actuator

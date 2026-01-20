@@ -1,8 +1,8 @@
 {
     "info": {
-        "_postman_id": "fhirhl7-transformer-integration",
-        "name": "FHIR<->HL7-Transformer Integration Tests",
-        "description": "Comprehensive Integration tests for FHIR<->HL7-Transformer API",
+        "_postman_id": "hl7-fhir-transformer-integration",
+        "name": "HL7FHIRTransformer Integration Tests",
+        "description": "Comprehensive Integration tests for HL7FHIRTransformer API",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "auth": {

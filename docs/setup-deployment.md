@@ -39,7 +39,7 @@ This deploys all services (app + dependencies) in containers.
 #### Step 1: Clone Repository
 ```bash
 git clone <repository-url>
-cd fhirhl7transformer
+cd HL7FHIRTransformer
 ```
 
 #### Step 2: Start All Services
@@ -48,7 +48,7 @@ docker-compose up -d
 ```
 
 This starts:
-- **fhirhl7-transformer**: Main application (port 8090)
+- **HL7FHIRTransformer**: Main application (port 8090)
 - **rabbitmq**: Message broker (ports 5672 AMQP, 15672 management UI)
 - **mongo**: Database (port 27017)
 - **redis**: Cache (port 6379)
@@ -59,7 +59,7 @@ This starts:
 docker-compose ps
 
 # Expected output:
-# fhirhl7-transformer    running    0.0.0.0:8090->8080/tcp
+# HL7FHIRTransformer    running    0.0.0.0:8090->8080/tcp
 # fhir-mq             running    5672/tcp, 15672/tcp
 # fhir-mongo          running    27017/tcp
 # fhir-redis          running    0.0.0.0:6379->6379/tcp
@@ -95,7 +95,7 @@ Run the Spring Boot app locally for development, with dependencies in Docker.
 
 #### Step 1: Start Only Dependencies
 ```bash
-# Modify docker-compose.yml to comment out fhirhl7-transformer service
+# Modify docker-compose.yml to comment out HL7FHIRTransformer service
 # OR use this command to start only specific services:
 docker-compose up -d rabbitmq mongo redis
 ```
@@ -105,7 +105,7 @@ Edit `src/main/resources/application.properties`:
 ```properties
 # Use localhost since dependencies are in Docker
 spring.rabbitmq.host=localhost
-spring.data.mongodb.uri=mongodb://localhost:27017/fhirhl7transformer
+spring.data.mongodb.uri=mongodb://localhost:27017/HL7FHIRTransformer
 spring.data.redis.host=localhost
 spring.data.redis.port=6379
 ```
@@ -116,7 +116,7 @@ spring.data.redis.port=6379
 mvn clean package -DskipTests
 
 # Run
-java -jar target/fhirhl7-transformer-0.0.1-SNAPSHOT.jar
+java -jar target/HL7FHIRTransformer-0.0.1-SNAPSHOT.jar
 
 # OR use Maven Spring Boot plugin
 mvn spring-boot:run
@@ -141,11 +141,11 @@ curl http://localhost:8080/actuator/health -u admin:password
 #### Step 2: Configure Run Configuration
 1. Run → Edit Configurations
 2. Add New → Spring Boot
-3. Main class: `com.fhirhl7transformer.fhirhl7transformerApplication`
+3. Main class: `com.HL7FHIRTransformer.HL7FHIRTransformerApplication`
 4. VM Options: `-Dspring.profiles.active=dev`
 5. Environment Variables:
    ```
-   MONGODB_URI=mongodb://localhost:27017/fhirhl7transformer
+   MONGODB_URI=mongodb://localhost:27017/HL7FHIRTransformer
    RABBITMQ_HOST=localhost
    REDIS_HOST=localhost
    ```
@@ -178,7 +178,7 @@ RUN mvn clean package -DskipTests
 # Stage 2: Runtime (JRE 21 only)
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=build /app/target/fhirhl7-transformer-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /app/target/HL7FHIRTransformer-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
 ```
@@ -189,18 +189,18 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 
 ### Build Custom Image
 ```bash
-docker build -t fhirhl7-transformer:latest .
+docker build -t HL7FHIRTransformer:latest .
 ```
 
 ### Run Standalone Container
 ```bash
 docker run -d \
-  --name fhirhl7-transformer \
+  --name HL7FHIRTransformer \
   -p 8090:8080 \
-  -e MONGODB_URI=mongodb://host.docker.internal:27017/fhirhl7transformer \
+  -e MONGODB_URI=mongodb://host.docker.internal:27017/HL7FHIRTransformer \
   -e RABBITMQ_HOST=host.docker.internal \
   -e REDIS_HOST=host.docker.internal \
-  fhirhl7-transformer:latest
+  HL7FHIRTransformer:latest
 ```
 
 ---
@@ -216,7 +216,7 @@ Create `values.yaml`:
 replicaCount: 3
 
 image:
-  repository: your-registry/fhirhl7-transformer
+  repository: your-registry/HL7FHIRTransformer
   tag: "1.0.0"
   pullPolicy: IfNotPresent
 
@@ -228,7 +228,7 @@ ingress:
   enabled: true
   className: nginx
   hosts:
-    - host: fhirhl7-transformer.example.com
+    - host: HL7FHIRTransformer.example.com
       paths:
         - path: /
           pathType: Prefix
@@ -243,7 +243,7 @@ resources:
 
 env:
   - name: MONGODB_URI
-    value: "mongodb://mongo-service:27017/fhirhl7transformer"
+    value: "mongodb://mongo-service:27017/HL7FHIRTransformer"
   - name: RABBITMQ_HOST
     value: "rabbitmq-service"
   - name: REDIS_HOST
@@ -251,12 +251,12 @@ env:
   - name: ADMIN_USERNAME
     valueFrom:
       secretKeyRef:
-        name: fhirhl7-transformer-secrets
+        name: HL7FHIRTransformer-secrets
         key: admin-username
   - name: ADMIN_PASSWORD
     valueFrom:
       secretKeyRef:
-        name: fhirhl7-transformer-secrets
+        name: HL7FHIRTransformer-secrets
         key: admin-password
 
 livenessProbe:
@@ -276,7 +276,7 @@ readinessProbe:
 
 Deploy:
 ```bash
-helm install fhirhl7-transformer ./helm-chart -f values.yaml
+helm install HL7FHIRTransformer ./helm-chart -f values.yaml
 ```
 
 #### Kubernetes Manifests (Alternative)
@@ -286,20 +286,20 @@ helm install fhirhl7-transformer ./helm-chart -f values.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: fhirhl7-transformer
+  name: HL7FHIRTransformer
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: fhirhl7-transformer
+      app: HL7FHIRTransformer
   template:
     metadata:
       labels:
-        app: fhirhl7-transformer
+        app: HL7FHIRTransformer
     spec:
       containers:
-      - name: fhirhl7-transformer
-        image: your-registry/fhirhl7-transformer:1.0.0
+      - name: HL7FHIRTransformer
+        image: your-registry/HL7FHIRTransformer:1.0.0
         ports:
         - containerPort: 8080
         env:
@@ -337,10 +337,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: fhirhl7-transformer-service
+  name: HL7FHIRTransformer-service
 spec:
   selector:
-    app: fhirhl7-transformer
+    app: HL7FHIRTransformer
   ports:
   - protocol: TCP
     port: 80
@@ -361,15 +361,15 @@ kubectl apply -f k8s/service.yaml
 #### Task Definition
 ```json
 {
-  "family": "fhirhl7-transformer",
+  "family": "HL7FHIRTransformer",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "1024",
   "memory": "2048",
   "containerDefinitions": [
     {
-      "name": "fhirhl7-transformer",
-      "image": "<account-id>.dkr.ecr.us-east-1.amazonaws.com/fhirhl7-transformer:latest",
+      "name": "HL7FHIRTransformer",
+      "image": "<account-id>.dkr.ecr.us-east-1.amazonaws.com/HL7FHIRTransformer:latest",
       "portMappings": [
         {
           "containerPort": 8080,
@@ -379,7 +379,7 @@ kubectl apply -f k8s/service.yaml
       "environment": [
         {
           "name": "MONGODB_URI",
-          "value": "mongodb://documentdb-cluster:27017/fhirhl7transformer"
+          "value": "mongodb://documentdb-cluster:27017/HL7FHIRTransformer"
         },
         {
           "name": "RABBITMQ_HOST",
@@ -399,7 +399,7 @@ kubectl apply -f k8s/service.yaml
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/fhirhl7-transformer",
+          "awslogs-group": "/ecs/HL7FHIRTransformer",
           "awslogs-region": "us-east-1",
           "awslogs-stream-prefix": "ecs"
         }
@@ -417,8 +417,8 @@ aws ecs register-task-definition --cli-input-json file://task-definition.json
 # Create service
 aws ecs create-service \
   --cluster fhir-cluster \
-  --service-name fhirhl7-transformer \
-  --task-definition fhirhl7-transformer \
+  --service-name HL7FHIRTransformer \
+  --task-definition HL7FHIRTransformer \
   --desired-count 3 \
   --launch-type FARGATE \
   --network-configuration "awsvpcConfiguration={subnets=[subnet-abc123],securityGroups=[sg-xyz789],assignPublicIp=ENABLED}"
@@ -433,7 +433,7 @@ aws ecs create-service \
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `SERVER_PORT` | 8080 | Application HTTP port |
-| `MONGODB_URI` | mongodb://mongo:27017/fhirhl7transformer | MongoDB connection string |
+| `MONGODB_URI` | mongodb://mongo:27017/HL7FHIRTransformer | MongoDB connection string |
 | `RABBITMQ_HOST` | localhost | RabbitMQ broker hostname |
 | `RABBITMQ_PORT` | 5672 | RabbitMQ AMQP port |
 | `RABBITMQ_USERNAME` | guest | RabbitMQ username |
@@ -450,7 +450,7 @@ aws ecs create-service \
 For production, create `docker-compose.prod.yml`:
 ```yaml
 services:
-  fhirhl7-transformer:
+  HL7FHIRTransformer:
     environment:
       - ADMIN_USERNAME=${ADMIN_USERNAME}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
@@ -483,7 +483,7 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 **Diagnosis**:
 ```bash
-docker logs fhirhl7-transformer
+docker logs HL7FHIRTransformer
 ```
 
 **Common Causes**:
@@ -541,7 +541,7 @@ environment:
 **Diagnosis**:
 ```bash
 # Check Redis is reachable
-docker exec fhirhl7-transformer redis-cli -h redis ping
+docker exec HL7FHIRTransformer redis-cli -h redis ping
 
 # Monitor cache hits
 docker exec fhir-redis redis-cli monitor

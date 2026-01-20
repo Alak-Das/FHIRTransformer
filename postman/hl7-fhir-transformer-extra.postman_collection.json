@@ -1,7 +1,7 @@
 {
     "info": {
-        "_postman_id": "fhirhl7-transformer-extra",
-        "name": "FHIR<->HL7-Transformer Extra Tests",
+        "_postman_id": "hl7-fhir-transformer-extra",
+        "name": "HL7FHIRTransformer Extra Tests",
         "description": "Additional tests for optional converters",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },

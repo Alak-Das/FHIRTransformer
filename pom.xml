@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.al.fhirhl7transformer</groupId>
-	<artifactId>fhirhl7-transformer</artifactId>
+	<artifactId>hl7-fhir-transformer</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>FHIR&lt;-&gt;HL7-Transformer</name>
+	<name>HL7FHIRTransformer</name>
 	<description>A tool to convert HL7 v2 messages to FHIR R4 and vice versa</description>
 	<properties>
 		<java.version>21</java.version>
