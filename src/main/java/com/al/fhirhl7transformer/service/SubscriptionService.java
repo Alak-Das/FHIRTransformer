@@ -40,6 +40,7 @@ public class SubscriptionService {
     /**
      * Check if any resources in the Bundle match active subscriptions and notify.
      */
+    @org.springframework.scheduling.annotation.Async
     public void checkAndNotify(Bundle bundle, String tenantId) {
         List<SubscriptionEntity> subscriptions = getActiveSubscriptions(tenantId);
         if (subscriptions.isEmpty())

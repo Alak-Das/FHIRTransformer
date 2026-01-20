@@ -20,8 +20,7 @@ public class FhirValidationService {
 
     private final FhirValidator validator;
 
-    public FhirValidationService() {
-        FhirContext fhirContext = FhirContext.forR4();
+    public FhirValidationService(FhirContext fhirContext) {
         this.validator = fhirContext.newValidator();
 
         // Setup terminology validation support

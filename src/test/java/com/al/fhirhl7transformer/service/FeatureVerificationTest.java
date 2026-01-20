@@ -94,9 +94,9 @@ public class FeatureVerificationTest {
 
     @BeforeEach
     void setUp() {
-        fhirValidationService = new FhirValidationService();
-        hapiContext = new DefaultHapiContext();
         fhirContext = FhirContext.forR4();
+        fhirValidationService = new FhirValidationService(fhirContext);
+        hapiContext = new DefaultHapiContext();
         meterRegistry = new SimpleMeterRegistry();
         parsingConfiguration = new ParsingConfiguration();
         parsingConfiguration.setSupportedVersions(Arrays.asList("2.3", "2.5", "2.5.1", "2.6"));
