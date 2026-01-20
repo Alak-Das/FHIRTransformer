@@ -1,11 +1,15 @@
 package com.al.fhirhl7transformer.service;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.context.support.DefaultProfileValidationSupport;
 import ca.uhn.fhir.validation.FhirValidator;
 import ca.uhn.fhir.validation.ValidationResult;
 import com.al.fhirhl7transformer.exception.FhirValidationException;
+import org.hl7.fhir.common.hapi.validation.support.CommonCodeSystemsTerminologyService;
+import org.hl7.fhir.common.hapi.validation.support.InMemoryTerminologyServerValidationSupport;
+import org.hl7.fhir.common.hapi.validation.support.ValidationSupportChain;
+import org.hl7.fhir.common.hapi.validation.validator.FhirInstanceValidator;
 import org.hl7.fhir.instance.model.api.IBaseResource;
-
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -19,18 +23,21 @@ public class FhirValidationService {
     public FhirValidationService() {
         FhirContext fhirContext = FhirContext.forR4();
         this.validator = fhirContext.newValidator();
-        // You can add more validation modules here if needed (e.g., Schema, Schematron)
-        // For now, we use the default validation support
+
+        // Setup terminology validation support
+        ValidationSupportChain supportChain = new ValidationSupportChain(
+                new DefaultProfileValidationSupport(fhirContext),
+                new InMemoryTerminologyServerValidationSupport(fhirContext),
+                new CommonCodeSystemsTerminologyService(fhirContext));
+
+        FhirInstanceValidator instanceValidator = new FhirInstanceValidator(supportChain);
+        this.validator.registerValidatorModule(instanceValidator);
     }
 
     public ValidationResult validate(IBaseResource resource) {
         return validator.validateWithResult(resource);
     }
 
-    /**
-     * Validate resource and throw detailed exception if validation fails.
-     * Extracts field-level errors with severity and location information.
-     */
     public void validateAndThrow(IBaseResource resource) {
         ValidationResult result = validate(resource);
         if (!result.isSuccessful()) {
@@ -43,14 +50,13 @@ public class FhirValidationService {
                             msg.getMessage()))
                     .collect(Collectors.toList());
 
-            String summary = String.format("FHIR validation failed with %d error(s)", errors.size());
-            throw new FhirValidationException(summary, errors);
+            if (!errors.isEmpty()) {
+                String summary = String.format("FHIR validation failed with %d error(s)", errors.size());
+                throw new FhirValidationException(summary, errors);
+            }
         }
     }
 
-    /**
-     * Get a human-readable summary of validation errors
-     */
     public String getValidationErrorSummary(ValidationResult result) {
         if (result.isSuccessful()) {
             return "Validation successful";

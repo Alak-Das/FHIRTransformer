@@ -148,6 +148,23 @@ public class Hl7ToFhirService {
 
             // Extract Trigger Event (MSH-9-2)
             String triggerEvent = terser.get("/.MSH-9-2");
+            log.info("Processing trigger event: {}", triggerEvent);
+
+            // Version Negotiation (MSH-12)
+            String versionId = terser.get("/.MSH-12");
+            log.debug("HL7 Message Version: {}", versionId);
+
+            if (versionId != null && !parsingConfiguration.getSupportedVersions().contains(versionId)) {
+                String errorMsg = "Unsupported HL7 version: " + versionId + ". Supported versions: "
+                        + parsingConfiguration.getSupportedVersions();
+                if (parsingConfiguration.getStrictness() == ParsingConfiguration.StrictnessLevel.STRICT) {
+                    log.error("Strict mode: {}", errorMsg);
+                    throw new IllegalArgumentException(errorMsg);
+                } else {
+                    log.warn(errorMsg);
+                    errors.add(ConversionError.warning("MSH", errorMsg));
+                }
+            }
             String msgType = terser.get("/.MSH-9-1");
 
             String patientId = UUID.randomUUID().toString();

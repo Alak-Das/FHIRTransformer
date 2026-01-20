@@ -48,6 +48,12 @@ public class ParsingConfiguration {
     private int maxErrors = 50;
 
     /**
+     * List of supported HL7 v2 versions.
+     */
+    private java.util.List<String> supportedVersions = java.util.Arrays.asList("2.3", "2.3.1", "2.4", "2.5", "2.5.1",
+            "2.6");
+
+    /**
      * Whether to include the original HL7 segment text in error messages.
      */
     private boolean includeSegmentTextInErrors = false;
