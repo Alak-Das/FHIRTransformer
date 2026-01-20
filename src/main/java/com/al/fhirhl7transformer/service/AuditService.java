@@ -55,4 +55,32 @@ public class AuditService {
             log.error("Failed to update status for transaction ID {}: {}", transactionId, e.getMessage(), e);
         }
     }
+
+    @Async
+    public void updateTransactionFailure(String transactionId, String status, String errorMessage, int retryCount) {
+        try {
+            transactionRepository.findByTransactionId(transactionId).ifPresent(record -> {
+                record.setStatus(status);
+                record.setLastErrorMessage(errorMessage);
+                record.setRetryCount(retryCount);
+                record.setLastRetryAt(LocalDateTime.now());
+                transactionRepository.save(record);
+            });
+        } catch (Exception e) {
+            log.error("Failed to update failure details for transaction ID {}: {}", transactionId, e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void updateTransactionSuccess(String transactionId, String status) {
+        try {
+            transactionRepository.findByTransactionId(transactionId).ifPresent(record -> {
+                record.setStatus(status);
+                record.setProcessingCompletedAt(LocalDateTime.now());
+                transactionRepository.save(record);
+            });
+        } catch (Exception e) {
+            log.error("Failed to update success details for transaction ID {}: {}", transactionId, e.getMessage(), e);
+        }
+    }
 }

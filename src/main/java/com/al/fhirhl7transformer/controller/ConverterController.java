@@ -38,6 +38,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import com.al.fhirhl7transformer.dto.BatchConversionResponse;
 import com.al.fhirhl7transformer.dto.BatchHl7Request;
 import com.al.fhirhl7transformer.service.BatchConversionService;
+import com.al.fhirhl7transformer.service.AckMessageService;
 
 @RestController
 @RequestMapping("/api/convert")
@@ -52,6 +53,7 @@ public class ConverterController {
     private final AuditService auditService;
     private final IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
+    private final AckMessageService ackMessageService;
 
     @Value("${app.rabbitmq.exchange}")
     private String exchange;
@@ -73,7 +75,8 @@ public class ConverterController {
             MessageEnrichmentService messageEnrichmentService,
             AuditService auditService,
             IdempotencyService idempotencyService,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            AckMessageService ackMessageService) {
         this.hl7ToFhirService = hl7ToFhirService;
         this.fhirToHl7Service = fhirToHl7Service;
         this.batchConversionService = batchConversionService;
@@ -82,6 +85,7 @@ public class ConverterController {
         this.auditService = auditService;
         this.idempotencyService = idempotencyService;
         this.objectMapper = objectMapper;
+        this.ackMessageService = ackMessageService;
     }
 
     @PostMapping(value = "/v2-to-fhir", consumes = MediaType.TEXT_PLAIN_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -128,18 +132,42 @@ public class ConverterController {
     public ResponseEntity<String> convertToFhirSync(@RequestBody String hl7Message,
             HttpServletResponse response, Principal principal)
             throws Exception {
-        EnrichedMessage enriched = messageEnrichmentService.ensureHl7TransactionId(hl7Message);
-        String transactionId = enriched.getTransactionId();
-        org.slf4j.MDC.put("transformerId", transactionId); // Update unified ID
-        response.setHeader("transformerId", transactionId);
-        String processedMessage = enriched.getContent();
+        try {
+            EnrichedMessage enriched = messageEnrichmentService.ensureHl7TransactionId(hl7Message);
+            String transactionId = enriched.getTransactionId();
+            org.slf4j.MDC.put("transformerId", transactionId); // Update unified ID
+            response.setHeader("transformerId", transactionId);
+            String processedMessage = enriched.getContent();
 
-        String fhirJson = hl7ToFhirService.convertHl7ToFhir(processedMessage);
+            String fhirJson = hl7ToFhirService.convertHl7ToFhir(processedMessage);
 
-        auditService.logTransaction(getTenantId(principal), transactionId,
-                MessageType.V2_TO_FHIR_SYNC, TransactionStatus.COMPLETED);
+            // Generate ACK message for successful conversion
+            String ackMessage = ackMessageService.generateAckAccept(processedMessage);
+            response.setHeader("X-HL7-ACK", java.util.Base64.getEncoder().encodeToString(ackMessage.getBytes()));
 
-        return ResponseEntity.ok(fhirJson);
+            auditService.logTransaction(getTenantId(principal), transactionId,
+                    MessageType.V2_TO_FHIR_SYNC, TransactionStatus.COMPLETED);
+
+            return ResponseEntity.ok(fhirJson);
+        } catch (Exception e) {
+            log.error("Error converting HL7 to FHIR: {}", e.getMessage(), e);
+
+            // Generate NAK (Application Error)
+            try {
+                // Determine if it's a Reject (AR) or Error (AE) based on exception type
+                String nakMessage;
+                if (e instanceof HL7Exception || e instanceof ca.uhn.fhir.parser.DataFormatException) {
+                    nakMessage = ackMessageService.generateAckReject(hl7Message, e.getMessage());
+                } else {
+                    nakMessage = ackMessageService.generateAckError(hl7Message, e.getMessage());
+                }
+                response.setHeader("X-HL7-ACK", java.util.Base64.getEncoder().encodeToString(nakMessage.getBytes()));
+            } catch (Exception ackEx) {
+                log.error("Failed to generate NAK: {}", ackEx.getMessage());
+            }
+
+            throw e; // Re-throw to be handled by global exception handler for JSON body response
+        }
     }
 
     @PostMapping(value = "/fhir-to-v2", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)

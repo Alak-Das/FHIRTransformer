@@ -23,9 +23,24 @@ public class TransactionRecord {
     private String tenantId;
     private String messageType; // e.g., "V2_TO_FHIR", "FHIR_TO_V2"
     private LocalDateTime timestamp;
-    private String status; // "ACCEPTED", "COMPLETED", "FAILED"
+    private String status; // "ACCEPTED", "QUEUED", "PROCESSING", "COMPLETED", "FAILED"
 
     // Idempotency support: sparse index allows null values (optional header)
     @Indexed(unique = true, sparse = true)
     private String idempotencyKey;
+
+    // Retry tracking
+    private int retryCount;
+    private LocalDateTime lastRetryAt;
+    private String lastErrorMessage;
+
+    // Processing details
+    private LocalDateTime processingStartedAt;
+    private LocalDateTime processingCompletedAt;
+    private Long processingDurationMs;
+
+    // Result summary
+    private Integer resourceCount;
+    private Integer errorCount;
+    private Integer warningCount;
 }

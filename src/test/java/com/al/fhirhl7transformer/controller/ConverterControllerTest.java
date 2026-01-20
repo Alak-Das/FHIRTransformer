@@ -53,14 +53,23 @@ public class ConverterControllerTest {
         @Mock
         private com.al.fhirhl7transformer.service.IdempotencyService idempotencyService;
 
+        @Mock
+        private com.al.fhirhl7transformer.service.AckMessageService ackMessageService;
+
         private ObjectMapper objectMapper = new ObjectMapper();
 
         @BeforeEach
-        public void setup() {
+        public void setup() throws Exception {
                 MockitoAnnotations.openMocks(this);
+
+                // Mock ACK generation
+                when(ackMessageService.generateAckAccept(anyString()))
+                                .thenReturn("MSH|^~\\&|ACK|FACILITY||20240101||ACK|123|P|2.5\rMSA|AA|123");
+
                 ConverterController controller = new ConverterController(
                                 hl7ToFhirService, fhirToHl7Service, batchConversionService, rabbitTemplate,
-                                messageEnrichmentService, auditService, idempotencyService, objectMapper);
+                                messageEnrichmentService, auditService, idempotencyService, objectMapper,
+                                ackMessageService);
 
                 ReflectionTestUtils.setField(controller, "exchange", "test-exchange");
                 ReflectionTestUtils.setField(controller, "routingKey", "test-routing-key");

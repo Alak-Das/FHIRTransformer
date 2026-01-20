@@ -1,9 +1,12 @@
 package com.al.fhirhl7transformer.listener;
 
 import com.al.fhirhl7transformer.service.Hl7ToFhirService;
+import com.al.fhirhl7transformer.service.WebhookService;
+import com.al.fhirhl7transformer.service.AuditService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -12,18 +15,23 @@ public class Hl7MessageListener {
     private static final Logger log = LoggerFactory.getLogger(Hl7MessageListener.class);
     private final Hl7ToFhirService hl7ToFhirService;
     private final org.springframework.amqp.rabbit.core.RabbitTemplate rabbitTemplate;
-    // private final TransactionRepository transactionRepository; // Removed
-    private final com.al.fhirhl7transformer.service.AuditService auditService; // Added
+    private final AuditService auditService;
+    private final WebhookService webhookService;
 
-    @org.springframework.beans.factory.annotation.Value("${app.rabbitmq.output-queue}")
+    @Value("${app.rabbitmq.output-queue}")
     private String outputQueue;
+
+    @Value("${app.webhook.url:#{null}}")
+    private String defaultWebhookUrl;
 
     public Hl7MessageListener(Hl7ToFhirService hl7ToFhirService,
             org.springframework.amqp.rabbit.core.RabbitTemplate rabbitTemplate,
-            com.al.fhirhl7transformer.service.AuditService auditService) {
+            AuditService auditService,
+            WebhookService webhookService) {
         this.hl7ToFhirService = hl7ToFhirService;
         this.rabbitTemplate = rabbitTemplate;
         this.auditService = auditService;
+        this.webhookService = webhookService;
     }
 
     @RabbitListener(queues = "${app.rabbitmq.queue}")
@@ -36,16 +44,22 @@ public class Hl7MessageListener {
                 com.al.fhirhl7transformer.config.TenantContext.setTenantId(tenantId);
             }
             log.info("Processing HL7 message with TenantID: {} (retry attempt: {})", tenantId, retryCount);
+
+            // Convert
             String fhirBundle = hl7ToFhirService.convertHl7ToFhir(hl7Message);
 
             // Publish to Output Queue
             rabbitTemplate.convertAndSend(outputQueue, fhirBundle);
             log.info("Successfully converted and published to {}", outputQueue);
 
-            // Update Transaction Status to PROCESSED
+            // Update Status and Notify
             String transactionId = extractTransactionId(hl7Message);
             if (transactionId != null) {
-                auditService.updateTransactionStatus(transactionId, "PROCESSED");
+                auditService.updateTransactionSuccess(transactionId, "COMPLETED");
+                if (defaultWebhookUrl != null) {
+                    // Pass 0 for resourceCount as we don't parse the bundle here for perf reasons
+                    webhookService.notifyCompletion(defaultWebhookUrl, transactionId, "V2_TO_FHIR", 0);
+                }
             }
 
         } catch (Exception e) {
@@ -57,6 +71,11 @@ public class Hl7MessageListener {
                 // Route to appropriate retry queue
                 int nextRetry = retryCount + 1;
                 String retryRoutingKey = "hl7.retry." + nextRetry;
+
+                // Track retry in DB
+                if (transactionId != null) {
+                    auditService.updateTransactionFailure(transactionId, "RETRYING", e.getMessage(), nextRetry);
+                }
 
                 rabbitTemplate.convertAndSend(
                         "hl7-messages-exchange",
@@ -72,9 +91,13 @@ public class Hl7MessageListener {
 
                 log.info("Message routed to retry queue '{}' (attempt {} of 3)", retryRoutingKey, nextRetry);
             } else {
-                // Max retries exhausted, mark as FAILED and let DLQ handle it
+                // Max retries exhausted
                 if (transactionId != null) {
-                    auditService.updateTransactionStatus(transactionId, "FAILED");
+                    auditService.updateTransactionFailure(transactionId, "FAILED", e.getMessage(), retryCount);
+                    if (defaultWebhookUrl != null) {
+                        webhookService.notifyFailure(defaultWebhookUrl, transactionId, "V2_TO_FHIR", e.getMessage(),
+                                retryCount);
+                    }
                 }
                 log.error("Max retries exhausted for transaction: {}", transactionId);
                 throw new RuntimeException("Max retries exceeded after 3 attempts", e);

@@ -1,6 +1,7 @@
 package com.al.fhirhl7transformer.service;
 
 import com.al.fhirhl7transformer.service.converter.*;
+import com.al.fhirhl7transformer.config.ParsingConfiguration;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.hl7v2.DefaultHapiContext;
@@ -52,11 +53,32 @@ public class ClinicalMappingsGapTest {
         DiagnosticReportConverter diagnosticReportConverter = new DiagnosticReportConverter();
         MedicationAdministrationConverter medicationAdministrationConverter = new MedicationAdministrationConverter();
         PractitionerConverter practitionerConverter = new PractitionerConverter();
+        LocationConverter locationConverter = new LocationConverter();
+        OrganizationConverter organizationConverter = new OrganizationConverter();
+        SpecimenConverter specimenConverter = new SpecimenConverter();
+        CommunicationConverter communicationConverter = new CommunicationConverter();
+        DeviceConverter deviceConverter = new DeviceConverter();
+        OrderConverter orderConverter = new OrderConverter();
+        DocumentReferenceConverter documentReferenceConverter = new DocumentReferenceConverter();
+        ParsingConfiguration parsingConfiguration = new ParsingConfiguration();
+        SubscriptionService subscriptionService = Mockito.mock(SubscriptionService.class);
+
         hl7ToFhirService = new Hl7ToFhirService(fhirValidationService, fhirContext, hapiContext, meterRegistry,
-                patientConverter, encounterConverter, observationConverter, allergyConverter,
-                conditionConverter, medicationConverter, procedureConverter, insuranceConverter,
-                appointmentConverter, immunizationConverter, serviceRequestConverter, diagnosticReportConverter,
-                medicationAdministrationConverter, practitionerConverter);
+                new PatientConverter(), new EncounterConverter(), new ObservationConverter(), new AllergyConverter(),
+                new ConditionConverter(), new MedicationConverter(), new ProcedureConverter(), new InsuranceConverter(),
+                new AppointmentConverter(), new ImmunizationConverter(), new ServiceRequestConverter(),
+                new DiagnosticReportConverter(),
+                new MedicationAdministrationConverter(),
+                new PractitionerConverter(),
+                new LocationConverter(),
+                new OrganizationConverter(),
+                new SpecimenConverter(),
+                new CommunicationConverter(),
+                new DeviceConverter(),
+                new OrderConverter(),
+                new DocumentReferenceConverter(),
+                new ParsingConfiguration(),
+                Mockito.mock(SubscriptionService.class));
     }
 
     @Test

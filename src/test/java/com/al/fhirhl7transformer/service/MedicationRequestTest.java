@@ -1,5 +1,6 @@
 package com.al.fhirhl7transformer.service;
 
+import com.al.fhirhl7transformer.config.ParsingConfiguration;
 import com.al.fhirhl7transformer.service.converter.*;
 import com.al.fhirhl7transformer.service.converter.ProcedureConverter;
 import com.al.fhirhl7transformer.service.converter.InsuranceConverter;
@@ -46,7 +47,16 @@ public class MedicationRequestTest {
                 new AppointmentConverter(), new ImmunizationConverter(), new ServiceRequestConverter(),
                 new DiagnosticReportConverter(),
                 new MedicationAdministrationConverter(),
-                new PractitionerConverter());
+                new PractitionerConverter(),
+                new LocationConverter(),
+                new OrganizationConverter(),
+                new SpecimenConverter(),
+                new CommunicationConverter(),
+                new DeviceConverter(),
+                new OrderConverter(),
+                new DocumentReferenceConverter(),
+                new ParsingConfiguration(),
+                Mockito.mock(SubscriptionService.class));
     }
 
     @Test

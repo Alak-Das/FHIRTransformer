@@ -327,7 +327,7 @@
                                     "    console.log(\"Transaction status: \" + targetTx.status);",
                                     "    // Test passes if status is either ACCEPTED (retries in progress) or FAILED (retries complete)",
                                     "    pm.test(\"Transaction Status (ACCEPTED during retries, FAILED after)\", function() {",
-                                    "        pm.expect(['ACCEPTED', 'FAILED']).to.include(targetTx.status);",
+                                    "        pm.expect(['ACCEPTED', 'FAILED', 'RETRYING']).to.include(targetTx.status);",
                                     "    });",
                                     "}"
                                 ],
@@ -1221,13 +1221,24 @@
                                     "    pm.response.to.have.status(200);",
                                     "});",
                                     "var jsonData = pm.response.json();",
-                                    "pm.test(\"Contains Pet Name Extension\", function () {",
-                                    "    var hasPet = jsonData.entry[0].resource.extension.some(e => e.url.includes(\"pet-name\") && e.valueString === \"Fluffy\");",
+                                    "var patient = jsonData.entry.find(e => e.resource && e.resource.resourceType === 'Patient');",
+                                    "pm.test(\"Contains Patient\", function () {",
+                                    "    pm.expect(patient).to.not.be.undefined;",
+                                    "});",
+                                    "pm.test(\"Patient has ZPI extensions\", function () {",
+                                    "    pm.expect(patient.resource.extension).to.be.an('array');",
+                                    "});",
+                                    "pm.test(\"Pet Name extension exists\", function () {",
+                                    "    var hasPet = patient.resource.extension.some(e => e.url && e.url.includes('pet-name') && e.valueString === 'Fluffy');",
                                     "    pm.expect(hasPet).to.be.true;",
                                     "});",
-                                    "pm.test(\"Contains VIP Level Extension\", function () {",
-                                    "    var hasVIP = jsonData.entry[0].resource.extension.some(e => e.url.includes(\"vip-level\") && e.valueString === \"VIP-Gold\");",
+                                    "pm.test(\"VIP Level extension exists\", function () {",
+                                    "    var hasVIP = patient.resource.extension.some(e => e.url && e.url.includes('vip-level') && e.valueString === 'VIP-Gold');",
                                     "    pm.expect(hasVIP).to.be.true;",
+                                    "});",
+                                    "pm.test(\"Archive Status extension exists\", function () {",
+                                    "    var hasArchive = patient.resource.extension.some(e => e.url && e.url.includes('archive-status') && e.valueString === 'Active');",
+                                    "    pm.expect(hasArchive).to.be.true;",
                                     "});"
                                 ],
                                 "type": "text/javascript"
@@ -1304,9 +1315,10 @@
                                     "    pm.expect(res.resource.status).to.eql('completed');",
                                     "});",
                                     "pm.test(\"Contains Manufacturer Organization\", function () {",
-                                    "    var res = jsonData.entry.find(e => e.resource.resourceType === 'Organization');",
-                                    "    pm.expect(res).to.not.be.undefined;",
-                                    "    pm.expect(res.resource.name).to.include('Merck');",
+                                    "    var orgs = jsonData.entry.filter(e => e.resource && e.resource.resourceType === 'Organization');",
+                                    "    pm.expect(orgs.length).to.be.above(0);",
+                                    "    var manufacturer = orgs.find(o => o.resource.name && (o.resource.name.includes('Merck') || o.resource.name.includes('MSD')));",
+                                    "    pm.expect(manufacturer, 'Manufacturer Merck/MSD should exist').to.not.be.undefined;",
                                     "});"
                                 ],
                                 "type": "text/javascript"
@@ -2983,6 +2995,87 @@
                             "path": [
                                 "api",
                                 "tenants"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Sync ORU^R01 (New Converters: SPM, NTE, Device, DocRef)",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "exec": [
+                                    "var uuid = require('uuid');",
+                                    "pm.environment.set(\"syncR01Id\", uuid.v4());"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Contains Specimen\", function () {",
+                                    "    var spm = jsonData.entry.find(e => e.resource.resourceType === \"Specimen\");",
+                                    "    pm.expect(spm).to.not.be.undefined;",
+                                    "    pm.expect(spm.resource.type.coding[0].code).to.eql(\"Blood\");",
+                                    "});",
+                                    "pm.test(\"Contains Device (from OBX-18)\", function () {",
+                                    "    var dev = jsonData.entry.find(e => e.resource.resourceType === \"Device\");",
+                                    "    pm.expect(dev).to.not.be.undefined;",
+                                    "    pm.expect(dev.resource.deviceName[0].name).to.eql(\"Analyzer01\");",
+                                    "});",
+                                    "pm.test(\"Contains DiagnosticReport\", function () {",
+                                    "    var rpt = jsonData.entry.find(e => e.resource.resourceType === \"DiagnosticReport\");",
+                                    "    pm.expect(rpt).to.not.be.undefined;",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "basic",
+                            "basic": [
+                                {
+                                    "key": "password",
+                                    "value": "password",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "username",
+                                    "value": "admin",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "text/plain",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|199904140038||ORU^R01|{{syncR01Id}}|P|2.5\rPID|1||104||TEST^SYNC||19800101|M\rORC|RE|12345\rOBR|1|12345||L1^Lab Test\rOBX|1|NM|123^Result||10.0|mg/dL\rNTE|1|L|Result Note\rOBX|2|ED|999^DeviceData|||||||||||||||DevID^^Analyzer01\rSPM|1|SpecimenID||Blood"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "v2-to-fhir-sync"
                             ]
                         }
                     }

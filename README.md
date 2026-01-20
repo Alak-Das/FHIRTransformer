@@ -69,6 +69,10 @@ FHIR<->HL7-Transformer is an enterprise-grade, high-performance bidirectional me
 - ServiceRequest (OBR)
 - Immunization (RXA)
 - Appointment (SCH)
+- Communication (Various notes)
+- DocumentReference (MDM)
+- Device (OBX-18)
+- Specimen (SPM)
 
 ### Medication Resources
 - MedicationRequest (RXE, RXR)

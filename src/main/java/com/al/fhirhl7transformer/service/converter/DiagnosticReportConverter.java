@@ -29,21 +29,25 @@ public class DiagnosticReportConverter implements SegmentConverter<DiagnosticRep
                 String mainPathToUse = obrPath;
                 boolean found = false;
 
-                // Try root path first
-                try {
-                    if (terser.getSegment(obrPath) != null) {
-                        found = true;
-                    }
-                } catch (Exception e) {
-                    // Try ORDER group path
-                    String orderPath = "/.ORDER(" + obrIndex + ")/OBR";
+                // Strategy to find OBR: Root -> ORDER -> ORDER_OBSERVATION ->
+                // PATIENT_RESULT/ORDER_OBSERVATION
+                String[] pathsToCheck = {
+                        obrPath,
+                        "/.ORDER(" + obrIndex + ")/OBR",
+                        "/.ORDER_OBSERVATION(" + obrIndex + ")/OBR",
+                        "/.PATIENT_RESULT/ORDER_OBSERVATION(" + obrIndex + ")/OBR",
+                        "/.RESPONSE/ORDER(" + obrIndex + ")/OBR"
+                };
+
+                for (String path : pathsToCheck) {
                     try {
-                        if (terser.getSegment(orderPath) != null) {
-                            mainPathToUse = orderPath;
+                        if (terser.getSegment(path) != null) {
+                            mainPathToUse = path;
                             found = true;
+                            break;
                         }
-                    } catch (Exception ex) {
-                        // Not found
+                    } catch (Exception ignored) {
+                        // Continue to next path
                     }
                 }
 

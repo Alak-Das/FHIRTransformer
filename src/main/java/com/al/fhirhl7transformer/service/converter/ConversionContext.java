@@ -12,6 +12,11 @@ public class ConversionContext {
     private String transactionId;
     private Message hapiMessage;
 
+    // Location and Organization context
+    private String locationId;
+    private String sendingOrganizationId;
+    private String receivingOrganizationId;
+
     @Builder.Default
     private java.util.Map<String, org.hl7.fhir.r4.model.ServiceRequest> serviceRequests = new java.util.HashMap<>();
 
