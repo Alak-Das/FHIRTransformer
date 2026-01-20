@@ -15,9 +15,9 @@
 	<description>A tool to convert HL7 v2 messages to FHIR R4 and vice versa</description>
 	<licenses>
 		<license>
-			<name>MIT License</name>
-			<url>https://opensource.org/licenses/MIT</url>
-			<distribution>repo</distribution>
+			<name>Proprietary License</name>
+			<url>blob:https://HL7FHIRTransformer/LICENSE</url>
+			<comments>Commercial license. Unauthorized use prohibited.</comments>
 		</license>
 	</licenses>
 	<properties>

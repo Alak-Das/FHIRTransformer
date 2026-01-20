@@ -169,7 +169,10 @@ HL7FHIRTransformer/
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+**Proprietary and Confidential.**
+
+All rights reserved. Unauthorized copying of this file, via any medium is strictly prohibited.
+For licensing inquiries, please contact sales@example.com.
 
 ## Support
 
