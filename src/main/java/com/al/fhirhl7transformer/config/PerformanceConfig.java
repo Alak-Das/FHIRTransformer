@@ -40,7 +40,8 @@ public class PerformanceConfig {
 
         // Configure custom model classes (e.g., ZPI segment)
         Map<String, String[]> customPackages = new HashMap<>();
-        customPackages.put("2.5", new String[] { "com.al.fhirhl7transformer.model.hl7.v25" });
+        customPackages.put("2.5", new String[] {
+                "com.al.fhirhl7transformer.model.hl7.v25" });
 
         CustomModelClassFactory cmcf = new CustomModelClassFactory(customPackages);
         ctx.setModelClassFactory(cmcf);

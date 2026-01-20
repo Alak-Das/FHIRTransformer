@@ -1,0 +1,228 @@
+{
+    "info": {
+        "_postman_id": "fhirhl7-transformer-extra",
+        "name": "FHIR<->HL7-Transformer Extra Tests",
+        "description": "Additional tests for optional converters",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "auth": {
+        "type": "basic",
+        "basic": [
+            {
+                "key": "password",
+                "value": "password",
+                "type": "string"
+            },
+            {
+                "key": "username",
+                "value": "admin",
+                "type": "string"
+            }
+        ]
+    },
+    "item": [
+        {
+            "name": "Optional Converters FHIR->HL7",
+            "item": [
+                {
+                    "name": "Sync CarePlan (FHIR->HL7)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var textData = pm.response.text();",
+                                    "pm.test(\"Contains ORC Segment\", function () {",
+                                    "    pm.expect(textData).to.include(\"ORC|NW|PLAC-001\");",
+                                    "});",
+                                    "pm.test(\"Contains Status IP\", function () {",
+                                    "    pm.expect(textData).to.include(\"IP\");",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"id\": \"test-careplan\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"id\": \"pat-1\",\n        \"name\": [ { \"family\": \"TEST\" } ]\n      }\n    },\n    {\n      \"resource\": {\n        \"resourceType\": \"CarePlan\",\n        \"status\": \"active\",\n        \"intent\": \"order\",\n        \"subject\": { \"reference\": \"Patient/pat-1\" },\n        \"identifier\": [ { \"value\": \"PLAC-001\" } ]\n      }\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/fhir-to-v2-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "fhir-to-v2-sync"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Sync PractitionerRole (FHIR->HL7)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var textData = pm.response.text();",
+                                    "pm.test(\"Contains ROL Segment\", function () {",
+                                    "    pm.expect(textData).to.include(\"ROL|\");",
+                                    "});",
+                                    "pm.test(\"Contains Doctor Role\", function () {",
+                                    "    pm.expect(textData).to.include(\"|CP^Consulting Provider\");",
+                                    "});",
+                                    "pm.test(\"Contains Practitioner Name\", function () {",
+                                    "    pm.expect(textData).to.include(\"Doe^John\");",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"resourceType\": \"Bundle\",\n  \"id\": \"test-practitionerrole\",\n  \"type\": \"transaction\",\n  \"entry\": [\n    {\n      \"resource\": {\n        \"resourceType\": \"Patient\",\n        \"id\": \"pat-1\",\n        \"name\": [ { \"family\": \"TEST\" } ]\n      }\n    },\n    {\n      \"resource\": {\n        \"resourceType\": \"PractitionerRole\",\n        \"code\": [ { \"coding\": [ { \"system\": \"http://terminology.hl7.org/CodeSystem/v2-0443\", \"code\": \"CP\", \"display\": \"Consulting Provider\" } ] } ],\n        \"practitioner\": { \"reference\": \"Practitioner/doc-1\", \"display\": \"John Doe\" },\n        \"telecom\": [ { \"system\": \"phone\", \"value\": \"555-1234\", \"use\": \"work\" } ]\n      }\n    }\n  ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/fhir-to-v2-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "fhir-to-v2-sync"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Optional Converters HL7->FHIR",
+            "item": [
+                {
+                    "name": "Sync CarePlan (HL7->FHIR)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Contains CarePlan\", function () {",
+                                    "    var cp = jsonData.entry.find(e => e.resource.resourceType === 'CarePlan');",
+                                    "    pm.expect(cp).to.not.be.undefined;",
+                                    "    pm.expect(cp.resource.status).to.eql('active');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "text/plain",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|202301011200||ORU^R01|TEST-CP|P|2.5\rPID|1||111||TEST^PAT\rORC|NW|PLAC-111||||||20230101"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "v2-to-fhir-sync"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Sync PractitionerRole (HL7->FHIR)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "var jsonData = pm.response.json();",
+                                    "pm.test(\"Contains PractitionerRole\", function () {",
+                                    "    var pr = jsonData.entry.find(e => e.resource.resourceType === 'PractitionerRole');",
+                                    "    pm.expect(pr).to.not.be.undefined;",
+                                    "    pm.expect(pr.resource.code[0].coding[0].code).to.eql('CP');",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "text/plain",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "MSH|^~\\&|HIS|RIH|EKG|EkG|202301011200||ADT^A01|TEST-ROL|P|2.5\rPID|1||111||TEST^PAT\rROL|1|UC|CP^Consulting Provider|DOC^JOHN"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/convert/v2-to-fhir-sync",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "v2-to-fhir-sync"
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -56,11 +56,16 @@ FHIR<->HL7-Transformer is an enterprise-grade, high-performance bidirectional me
 
 ### Administrative Resources
 - Patient (PID, PD1)
-- Practitioner (Custom mappings)
+- Practitioner (ROL, PV1, Custom mappings)
+- PractitionerRole (ROL)
 - RelatedPerson (NK1)
+- Organization (MSH)
+- Location (PV1-3/6)
+- MessageHeader (MSH)
 
 ### Clinical Resources
 - Encounter (PV1, PV2)
+- CarePlan (ORC, RXO)
 - Observation (OBX)
 - AllergyIntolerance (AL1)
 - Condition (DG1)
@@ -81,6 +86,7 @@ FHIR<->HL7-Transformer is an enterprise-grade, high-performance bidirectional me
 ### Financial Resources
 - Coverage (IN1, insurance)
 - Account (GT1, guarantor)
+
 
 ## Getting Started
 

@@ -76,6 +76,12 @@ public class FeatureVerificationTest {
     private DocumentReferenceConverter documentReferenceConverter;
     @Mock
     private SubscriptionService subscriptionService;
+    @Mock
+    private CarePlanConverter carePlanConverter;
+    @Mock
+    private PractitionerRoleConverter practitionerRoleConverter;
+    @Mock
+    private MessageHeaderConverter messageHeaderConverter;
 
     private ParsingConfiguration parsingConfiguration;
     private HapiContext hapiContext;
@@ -97,7 +103,8 @@ public class FeatureVerificationTest {
                 appointmentConverter, immunizationConverter, serviceRequestConverter, diagnosticReportConverter,
                 medicationAdministrationConverter, practitionerConverter, locationConverter, organizationConverter,
                 specimenConverter, communicationConverter, deviceConverter, orderConverter,
-                documentReferenceConverter, parsingConfiguration, subscriptionService);
+                documentReferenceConverter, carePlanConverter, practitionerRoleConverter, messageHeaderConverter,
+                parsingConfiguration, subscriptionService);
     }
 
     @Test
@@ -202,5 +209,8 @@ public class FeatureVerificationTest {
         when(deviceConverter.convert(any(), any(), any())).thenReturn(Collections.emptyList());
         when(orderConverter.convert(any(), any(), any())).thenReturn(Collections.emptyList());
         when(documentReferenceConverter.convert(any(), any(), any())).thenReturn(Collections.emptyList());
+        when(carePlanConverter.convert(any(), any(), any())).thenReturn(Collections.emptyList());
+        when(practitionerRoleConverter.convert(any(), any(), any())).thenReturn(Collections.emptyList());
+        when(messageHeaderConverter.convert(any(), any(), any())).thenReturn(Collections.emptyList());
     }
 }

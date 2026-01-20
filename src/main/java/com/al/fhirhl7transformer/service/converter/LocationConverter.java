@@ -29,7 +29,6 @@ import java.util.UUID;
 public class LocationConverter implements SegmentConverter<Location> {
 
     private static final String LOCATION_TYPE_SYSTEM = "http://terminology.hl7.org/CodeSystem/location-physical-type";
-    private static final String V2_LOCATION_TYPE_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0260";
 
     @Override
     public List<Location> convert(Terser terser, Bundle bundle, ConversionContext context) {
@@ -67,7 +66,6 @@ public class LocationConverter implements SegmentConverter<Location> {
             String bed = terser.get(mainPathToUse + "-3-3");
             String facility = terser.get(mainPathToUse + "-3-4");
             String locationStatus = terser.get(mainPathToUse + "-3-5");
-            String locationType = terser.get(mainPathToUse + "-3-6");
             String building = terser.get(mainPathToUse + "-3-7");
             String floor = terser.get(mainPathToUse + "-3-8");
             String locationDesc = terser.get(mainPathToUse + "-3-9");

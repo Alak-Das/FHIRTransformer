@@ -55,6 +55,9 @@ public class MedicationRequestTest {
                 new DeviceConverter(),
                 new OrderConverter(),
                 new DocumentReferenceConverter(),
+                new CarePlanConverter(),
+                new PractitionerRoleConverter(),
+                new MessageHeaderConverter(),
                 new ParsingConfiguration(),
                 Mockito.mock(SubscriptionService.class));
     }

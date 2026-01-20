@@ -1,0 +1,160 @@
+# ==========================================
+# FHIR to HL7 Mapping Configuration
+# ==========================================
+# This file allows customization of field mappings without code changes.
+# Restart the application after making changes.
+
+fhir-to-hl7:
+  # Target HL7 version for generated messages
+  hl7-version: "2.5"
+  
+  # Default message type when not auto-detected
+  default-message-type: "ADT^A01"
+  
+  # Sending/Receiving application defaults
+  sending-application: "fhirhl7transformer"
+  receiving-application: "LegacyApp"
+  sending-facility: "FHIR_FACILITY"
+  receiving-facility: "HL7_FACILITY"
+  
+  # Enable/disable specific converters
+  converters:
+    patient-to-pid: true
+    encounter-to-pv1: true
+    observation-to-obx: true
+    condition-to-dg1: true
+    procedure-to-pr1: true
+    allergy-to-al1: true
+    coverage-to-in1: true
+    related-person-to-gt1: true
+    medication-request-to-rxe: true
+    immunization-to-rxa: true
+    appointment-to-sch: true
+    service-request-to-obr: true
+    diagnostic-report-to-oru: true
+    specimen-to-spm: true
+    device-to-obx: true
+    communication-to-nte: true
+    document-reference-to-txa: true
+    account-to-gt1: true
+    related-person-to-nk1: true
+    location-to-pv1: true
+    organization-to-msh: true
+    extension-to-zsegment: true
+  
+  # Field mappings for Patient -> PID
+  patient:
+    identifier-type-code-map:
+      MR: "MRN"
+      SS: "SSN"
+      DL: "DL"
+      PPN: "PASSPORT"
+    gender-map:
+      male: "M"
+      female: "F"
+      other: "O"
+      unknown: "U"
+    marital-status-map:
+      S: "S"
+      M: "M"
+      D: "D"
+      W: "W"
+      A: "A"
+      U: "U"
+  
+  # Field mappings for Encounter -> PV1
+  encounter:
+    class-map:
+      IMP: "I"
+      EMER: "E"
+      AMB: "O"
+      inpatient: "I"
+      emergency: "E"
+      outpatient: "O"
+      ambulatory: "O"
+    status-map:
+      planned: "P"
+      arrived: "A"
+      triaged: "T"
+      in-progress: "I"
+      onleave: "O"
+      finished: "D"
+      cancelled: "C"
+  
+  # Field mappings for Observation -> OBX
+  observation:
+    value-type-map:
+      Quantity: "NM"
+      CodeableConcept: "CE"
+      string: "ST"
+      boolean: "ST"
+      dateTime: "TS"
+      Range: "SN"
+      Ratio: "SN"
+    status-map:
+      registered: "O"
+      preliminary: "P"
+      final: "F"
+      amended: "A"
+      corrected: "C"
+      cancelled: "X"
+      entered-in-error: "D"
+  
+  # Z-segment configuration
+  z-segments:
+    enabled: true
+    # Custom Z-segment definitions
+    custom-segments:
+      ZPD:
+        description: "Patient Demographics Extension"
+        fields:
+          1: "Set ID"
+          2: "Custom Patient ID"
+          3: "Patient Category"
+          4: "VIP Indicator"
+      ZPV:
+        description: "Visit Extension"
+        fields:
+          1: "Set ID"
+          2: "Expected LOS"
+          3: "Attending Specialty"
+      ZOB:
+        description: "Observation Extension"
+        fields:
+          1: "Set ID"
+          2: "Observation Subtype"
+          3: "Research Flag"
+  
+  # Message type detection rules
+  message-type-detection:
+    rules:
+      - resources: ["DiagnosticReport"]
+        message-type: "ORU^R01"
+      - resources: ["DocumentReference"]
+        message-type: "MDM^T02"
+      - resources: ["Appointment"]
+        message-type: "SIU^S12"
+      - resources: ["ServiceRequest", "MedicationRequest"]
+        message-type: "ORM^O01"
+      - resources: ["Patient", "Encounter"]
+        message-type: "ADT^A01"
+
+# HL7 Version-specific settings
+hl7-version-config:
+  "2.3":
+    encoding-characters: "^~\\&"
+    date-format: "yyyyMMdd"
+    datetime-format: "yyyyMMddHHmm"
+    segment-terminator: "\r"
+  "2.4":
+    encoding-characters: "^~\\&"
+    date-format: "yyyyMMdd"
+    datetime-format: "yyyyMMddHHmmss"
+    segment-terminator: "\r"
+  "2.5":
+    encoding-characters: "^~\\&"
+    date-format: "yyyyMMdd"
+    datetime-format: "yyyyMMddHHmmss"
+    segment-terminator: "\r"
+    # Additional v2.5 features
+    use-escape-sequences: true

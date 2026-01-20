@@ -55,6 +55,9 @@ public class Hl7ToFhirService {
     private final DeviceConverter deviceConverter;
     private final OrderConverter orderConverter;
     private final DocumentReferenceConverter documentReferenceConverter;
+    private final CarePlanConverter carePlanConverter;
+    private final PractitionerRoleConverter practitionerRoleConverter;
+    private final MessageHeaderConverter messageHeaderConverter;
     private final ParsingConfiguration parsingConfiguration;
     private final SubscriptionService subscriptionService;
 
@@ -76,6 +79,9 @@ public class Hl7ToFhirService {
             DeviceConverter deviceConverter,
             OrderConverter orderConverter,
             DocumentReferenceConverter documentReferenceConverter,
+            CarePlanConverter carePlanConverter,
+            PractitionerRoleConverter practitionerRoleConverter,
+            MessageHeaderConverter messageHeaderConverter,
             ParsingConfiguration parsingConfiguration,
             SubscriptionService subscriptionService) {
         this.hl7Context = hapiContext;
@@ -103,6 +109,9 @@ public class Hl7ToFhirService {
         this.deviceConverter = deviceConverter;
         this.orderConverter = orderConverter;
         this.documentReferenceConverter = documentReferenceConverter;
+        this.carePlanConverter = carePlanConverter;
+        this.practitionerRoleConverter = practitionerRoleConverter;
+        this.messageHeaderConverter = messageHeaderConverter;
         this.parsingConfiguration = parsingConfiguration;
         this.subscriptionService = subscriptionService;
     }
@@ -347,6 +356,30 @@ public class Hl7ToFhirService {
                 } catch (Exception e) {
                     handleConverterError("DocumentReference", e, errors);
                 }
+            }
+
+            // MessageHeader (New)
+            try {
+                List<MessageHeader> headers = messageHeaderConverter.convert(terser, bundle, context);
+                addToBundle(bundle, headers, "MessageHeader");
+            } catch (Exception e) {
+                handleConverterError("MessageHeader", e, errors);
+            }
+
+            // CarePlan (New) - from ORC usually
+            try {
+                List<CarePlan> carePlans = carePlanConverter.convert(terser, bundle, context);
+                addToBundle(bundle, carePlans, "CarePlan");
+            } catch (Exception e) {
+                handleConverterError("CarePlan", e, errors);
+            }
+
+            // PractitionerRole (New) - from ROL
+            try {
+                List<PractitionerRole> roles = practitionerRoleConverter.convert(terser, bundle, context);
+                addToBundle(bundle, roles, "PractitionerRole");
+            } catch (Exception e) {
+                handleConverterError("PractitionerRole", e, errors);
             }
 
             // Insurance / RelatedPerson / Organizations (IN1/GT1)
