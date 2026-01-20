@@ -41,8 +41,9 @@ public class MedicationRequestTest {
         // But checking the code, convertHl7ToFhir doesn't seem to block on validation
         // failure unless constructed so.
 
-        hl7ToFhirService = new Hl7ToFhirService(fhirValidationService, fhirContext, hapiContext, meterRegistry,
-                new PatientConverter(), new EncounterConverter(), new ObservationConverter(), new AllergyConverter(),
+        Hl7ConverterRegistry registry = new Hl7ConverterRegistry(
+                new PatientConverter(new com.al.fhirhl7transformer.config.MappingConfiguration()),
+                new EncounterConverter(), new ObservationConverter(), new AllergyConverter(),
                 new ConditionConverter(), new MedicationConverter(), new ProcedureConverter(), new InsuranceConverter(),
                 new AppointmentConverter(), new ImmunizationConverter(), new ServiceRequestConverter(),
                 new DiagnosticReportConverter(),
@@ -57,7 +58,10 @@ public class MedicationRequestTest {
                 new DocumentReferenceConverter(),
                 new CarePlanConverter(),
                 new PractitionerRoleConverter(),
-                new MessageHeaderConverter(),
+                new MessageHeaderConverter());
+
+        hl7ToFhirService = new Hl7ToFhirService(fhirValidationService, fhirContext, hapiContext, meterRegistry,
+                registry,
                 new ParsingConfiguration(),
                 Mockito.mock(SubscriptionService.class));
     }

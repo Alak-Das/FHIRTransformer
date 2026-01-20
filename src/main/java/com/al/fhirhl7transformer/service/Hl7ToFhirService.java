@@ -34,84 +34,24 @@ public class Hl7ToFhirService {
     private final FhirContext fhirContext;
     private final FhirValidationService fhirValidationService;
     private final MeterRegistry meterRegistry;
-    private final PatientConverter patientConverter;
-    private final EncounterConverter encounterConverter;
-    private final ObservationConverter observationConverter;
-    private final AllergyConverter allergyConverter;
-    private final ConditionConverter conditionConverter;
-    private final MedicationConverter medicationConverter;
-    private final ProcedureConverter procedureConverter;
-    private final InsuranceConverter insuranceConverter;
-    private final AppointmentConverter appointmentConverter;
-    private final ImmunizationConverter immunizationConverter;
-    private final ServiceRequestConverter serviceRequestConverter;
-    private final DiagnosticReportConverter diagnosticReportConverter;
-    private final MedicationAdministrationConverter medicationAdministrationConverter;
-    private final PractitionerConverter practitionerConverter;
-    private final LocationConverter locationConverter;
-    private final OrganizationConverter organizationConverter;
-    private final SpecimenConverter specimenConverter;
-    private final CommunicationConverter communicationConverter;
-    private final DeviceConverter deviceConverter;
-    private final OrderConverter orderConverter;
-    private final DocumentReferenceConverter documentReferenceConverter;
-    private final CarePlanConverter carePlanConverter;
-    private final PractitionerRoleConverter practitionerRoleConverter;
-    private final MessageHeaderConverter messageHeaderConverter;
+    private final Hl7ConverterRegistry converterRegistry;
     private final ParsingConfiguration parsingConfiguration;
     private final SubscriptionService subscriptionService;
 
     @Autowired
-    public Hl7ToFhirService(FhirValidationService fhirValidationService, FhirContext fhirContext,
-            HapiContext hapiContext, MeterRegistry meterRegistry,
-            PatientConverter patientConverter, EncounterConverter encounterConverter,
-            ObservationConverter observationConverter, AllergyConverter allergyConverter,
-            ConditionConverter conditionConverter, MedicationConverter medicationConverter,
-            ProcedureConverter procedureConverter, InsuranceConverter insuranceConverter,
-            AppointmentConverter appointmentConverter, ImmunizationConverter immunizationConverter,
-            ServiceRequestConverter serviceRequestConverter, DiagnosticReportConverter diagnosticReportConverter,
-            MedicationAdministrationConverter medicationAdministrationConverter,
-            PractitionerConverter practitionerConverter,
-            LocationConverter locationConverter,
-            OrganizationConverter organizationConverter,
-            SpecimenConverter specimenConverter,
-            CommunicationConverter communicationConverter,
-            DeviceConverter deviceConverter,
-            OrderConverter orderConverter,
-            DocumentReferenceConverter documentReferenceConverter,
-            CarePlanConverter carePlanConverter,
-            PractitionerRoleConverter practitionerRoleConverter,
-            MessageHeaderConverter messageHeaderConverter,
+    public Hl7ToFhirService(
+            FhirValidationService fhirValidationService,
+            FhirContext fhirContext,
+            HapiContext hapiContext,
+            MeterRegistry meterRegistry,
+            Hl7ConverterRegistry converterRegistry,
             ParsingConfiguration parsingConfiguration,
             SubscriptionService subscriptionService) {
         this.hl7Context = hapiContext;
         this.fhirContext = fhirContext;
         this.fhirValidationService = fhirValidationService;
         this.meterRegistry = meterRegistry;
-        this.patientConverter = patientConverter;
-        this.encounterConverter = encounterConverter;
-        this.observationConverter = observationConverter;
-        this.allergyConverter = allergyConverter;
-        this.conditionConverter = conditionConverter;
-        this.medicationConverter = medicationConverter;
-        this.procedureConverter = procedureConverter;
-        this.insuranceConverter = insuranceConverter;
-        this.appointmentConverter = appointmentConverter;
-        this.immunizationConverter = immunizationConverter;
-        this.serviceRequestConverter = serviceRequestConverter;
-        this.diagnosticReportConverter = diagnosticReportConverter;
-        this.medicationAdministrationConverter = medicationAdministrationConverter;
-        this.practitionerConverter = practitionerConverter;
-        this.locationConverter = locationConverter;
-        this.organizationConverter = organizationConverter;
-        this.specimenConverter = specimenConverter;
-        this.communicationConverter = communicationConverter;
-        this.deviceConverter = deviceConverter;
-        this.orderConverter = orderConverter;
-        this.documentReferenceConverter = documentReferenceConverter;
-        this.carePlanConverter = carePlanConverter;
-        this.practitionerRoleConverter = practitionerRoleConverter;
-        this.messageHeaderConverter = messageHeaderConverter;
+        this.converterRegistry = converterRegistry;
         this.parsingConfiguration = parsingConfiguration;
         this.subscriptionService = subscriptionService;
     }
@@ -185,7 +125,8 @@ public class Hl7ToFhirService {
 
             // Organizations
             try {
-                List<Organization> organizations = organizationConverter.convert(terser, bundle, context);
+                List<Organization> organizations = converterRegistry.getOrganizationConverter().convert(terser, bundle,
+                        context);
                 addToBundle(bundle, organizations, "Organization");
             } catch (Exception e) {
                 handleConverterError("Organization", e, errors);
@@ -193,7 +134,7 @@ public class Hl7ToFhirService {
 
             // Locations
             try {
-                List<Location> locations = locationConverter.convert(terser, bundle, context);
+                List<Location> locations = converterRegistry.getLocationConverter().convert(terser, bundle, context);
                 addToBundle(bundle, locations, "Location");
             } catch (Exception e) {
                 handleConverterError("Location", e, errors);
@@ -201,7 +142,7 @@ public class Hl7ToFhirService {
 
             // Extract Patient Data
             try {
-                List<Patient> patients = patientConverter.convert(terser, bundle, context);
+                List<Patient> patients = converterRegistry.getPatientConverter().convert(terser, bundle, context);
                 if (!patients.isEmpty()) {
                     addToBundle(bundle, patients, "Patient");
                 } else {
@@ -215,7 +156,7 @@ public class Hl7ToFhirService {
 
             // Encounters
             try {
-                List<Encounter> encounters = encounterConverter.convert(terser, bundle, context);
+                List<Encounter> encounters = converterRegistry.getEncounterConverter().convert(terser, bundle, context);
                 addToBundle(bundle, encounters, "Encounter");
             } catch (Exception e) {
                 handleConverterError("Encounter", e, errors);
@@ -223,7 +164,8 @@ public class Hl7ToFhirService {
 
             // Observations
             try {
-                List<Observation> observations = observationConverter.convert(terser, bundle, context);
+                List<Observation> observations = converterRegistry.getObservationConverter().convert(terser, bundle,
+                        context);
                 addToBundle(bundle, observations, "Observation");
             } catch (Exception e) {
                 handleConverterError("Observation", e, errors);
@@ -231,7 +173,7 @@ public class Hl7ToFhirService {
 
             // Conditions
             try {
-                List<Condition> conditions = conditionConverter.convert(terser, bundle, context);
+                List<Condition> conditions = converterRegistry.getConditionConverter().convert(terser, bundle, context);
                 addToBundle(bundle, conditions, "Condition");
             } catch (Exception e) {
                 handleConverterError("Condition", e, errors);
@@ -239,7 +181,8 @@ public class Hl7ToFhirService {
 
             // Allergies
             try {
-                List<AllergyIntolerance> allergies = allergyConverter.convert(terser, bundle, context);
+                List<AllergyIntolerance> allergies = converterRegistry.getAllergyConverter().convert(terser, bundle,
+                        context);
                 addToBundle(bundle, allergies, "AllergyIntolerance");
             } catch (Exception e) {
                 handleConverterError("AllergyIntolerance", e, errors);
@@ -247,7 +190,8 @@ public class Hl7ToFhirService {
 
             // Medications
             try {
-                List<MedicationRequest> medications = medicationConverter.convert(terser, bundle, context);
+                List<MedicationRequest> medications = converterRegistry.getMedicationConverter().convert(terser, bundle,
+                        context);
                 addToBundle(bundle, medications, "MedicationRequest");
             } catch (Exception e) {
                 handleConverterError("MedicationRequest", e, errors);
@@ -255,8 +199,9 @@ public class Hl7ToFhirService {
 
             // MedicationAdministration
             try {
-                List<MedicationAdministration> adminList = medicationAdministrationConverter.convert(terser, bundle,
-                        context);
+                List<MedicationAdministration> adminList = converterRegistry.getMedicationAdministrationConverter()
+                        .convert(terser, bundle,
+                                context);
                 addToBundle(bundle, adminList, "MedicationAdministration");
             } catch (Exception e) {
                 handleConverterError("MedicationAdministration", e, errors);
@@ -264,7 +209,8 @@ public class Hl7ToFhirService {
 
             // Practitioners
             try {
-                List<Practitioner> practitioners = practitionerConverter.convert(terser, bundle, context);
+                List<Practitioner> practitioners = converterRegistry.getPractitionerConverter().convert(terser, bundle,
+                        context);
                 addToBundle(bundle, practitioners, "Practitioner");
             } catch (Exception e) {
                 handleConverterError("Practitioner", e, errors);
@@ -272,7 +218,7 @@ public class Hl7ToFhirService {
 
             // Procedures
             try {
-                List<Procedure> procedures = procedureConverter.convert(terser, bundle, context);
+                List<Procedure> procedures = converterRegistry.getProcedureConverter().convert(terser, bundle, context);
                 addToBundle(bundle, procedures, "Procedure");
             } catch (Exception e) {
                 handleConverterError("Procedure", e, errors);
@@ -280,7 +226,7 @@ public class Hl7ToFhirService {
 
             // Specimen (New)
             try {
-                List<Specimen> specimens = specimenConverter.convert(terser, bundle, context);
+                List<Specimen> specimens = converterRegistry.getSpecimenConverter().convert(terser, bundle, context);
                 addToBundle(bundle, specimens, "Specimen");
             } catch (Exception e) {
                 handleConverterError("Specimen", e, errors);
@@ -291,7 +237,8 @@ public class Hl7ToFhirService {
             // ServiceRequestConverter
             if ("ORM".equals(msgType)) {
                 try {
-                    List<DomainResource> resources = orderConverter.convert(terser, bundle, context);
+                    List<DomainResource> resources = converterRegistry.getOrderConverter().convert(terser, bundle,
+                            context);
                     for (DomainResource res : resources) {
                         bundle.addEntry().setResource(res).getRequest().setMethod(Bundle.HTTPVerb.POST)
                                 .setUrl(res.getResourceType().name());
@@ -301,7 +248,8 @@ public class Hl7ToFhirService {
                 }
             } else {
                 try {
-                    List<ServiceRequest> serviceRequests = serviceRequestConverter.convert(terser, bundle, context);
+                    List<ServiceRequest> serviceRequests = converterRegistry.getServiceRequestConverter()
+                            .convert(terser, bundle, context);
                     addToBundle(bundle, serviceRequests, "ServiceRequest");
                 } catch (Exception e) {
                     handleConverterError("ServiceRequest", e, errors);
@@ -310,7 +258,8 @@ public class Hl7ToFhirService {
 
             // DiagnosticReports
             try {
-                List<DiagnosticReport> reports = diagnosticReportConverter.convert(terser, bundle, context);
+                List<DiagnosticReport> reports = converterRegistry.getDiagnosticReportConverter().convert(terser,
+                        bundle, context);
                 addToBundle(bundle, reports, "DiagnosticReport");
             } catch (Exception e) {
                 handleConverterError("DiagnosticReport", e, errors);
@@ -318,7 +267,8 @@ public class Hl7ToFhirService {
 
             // Immunizations
             try {
-                List<Immunization> immunizations = immunizationConverter.convert(terser, bundle, context);
+                List<Immunization> immunizations = converterRegistry.getImmunizationConverter().convert(terser, bundle,
+                        context);
                 addToBundle(bundle, immunizations, "Immunization");
             } catch (Exception e) {
                 handleConverterError("Immunization", e, errors);
@@ -326,7 +276,8 @@ public class Hl7ToFhirService {
 
             // Appointments
             try {
-                List<Appointment> appointments = appointmentConverter.convert(terser, bundle, context);
+                List<Appointment> appointments = converterRegistry.getAppointmentConverter().convert(terser, bundle,
+                        context);
                 addToBundle(bundle, appointments, "Appointment");
             } catch (Exception e) {
                 handleConverterError("Appointment", e, errors);
@@ -334,7 +285,8 @@ public class Hl7ToFhirService {
 
             // Communication (New)
             try {
-                List<Communication> comms = communicationConverter.convert(terser, bundle, context);
+                List<Communication> comms = converterRegistry.getCommunicationConverter().convert(terser, bundle,
+                        context);
                 addToBundle(bundle, comms, "Communication");
             } catch (Exception e) {
                 handleConverterError("Communication", e, errors);
@@ -342,7 +294,7 @@ public class Hl7ToFhirService {
 
             // Device (New)
             try {
-                List<Device> devices = deviceConverter.convert(terser, bundle, context);
+                List<Device> devices = converterRegistry.getDeviceConverter().convert(terser, bundle, context);
                 addToBundle(bundle, devices, "Device");
             } catch (Exception e) {
                 handleConverterError("Device", e, errors);
@@ -351,7 +303,8 @@ public class Hl7ToFhirService {
             // DocumentReference (New) - for MDM or others
             if ("MDM".equals(msgType) || "T02".equals(triggerEvent)) {
                 try {
-                    List<DocumentReference> docs = documentReferenceConverter.convert(terser, bundle, context);
+                    List<DocumentReference> docs = converterRegistry.getDocumentReferenceConverter().convert(terser,
+                            bundle, context);
                     addToBundle(bundle, docs, "DocumentReference");
                 } catch (Exception e) {
                     handleConverterError("DocumentReference", e, errors);
@@ -360,7 +313,8 @@ public class Hl7ToFhirService {
 
             // MessageHeader (New)
             try {
-                List<MessageHeader> headers = messageHeaderConverter.convert(terser, bundle, context);
+                List<MessageHeader> headers = converterRegistry.getMessageHeaderConverter().convert(terser, bundle,
+                        context);
                 addToBundle(bundle, headers, "MessageHeader");
             } catch (Exception e) {
                 handleConverterError("MessageHeader", e, errors);
@@ -368,7 +322,7 @@ public class Hl7ToFhirService {
 
             // CarePlan (New) - from ORC usually
             try {
-                List<CarePlan> carePlans = carePlanConverter.convert(terser, bundle, context);
+                List<CarePlan> carePlans = converterRegistry.getCarePlanConverter().convert(terser, bundle, context);
                 addToBundle(bundle, carePlans, "CarePlan");
             } catch (Exception e) {
                 handleConverterError("CarePlan", e, errors);
@@ -376,7 +330,8 @@ public class Hl7ToFhirService {
 
             // PractitionerRole (New) - from ROL
             try {
-                List<PractitionerRole> roles = practitionerRoleConverter.convert(terser, bundle, context);
+                List<PractitionerRole> roles = converterRegistry.getPractitionerRoleConverter().convert(terser, bundle,
+                        context);
                 addToBundle(bundle, roles, "PractitionerRole");
             } catch (Exception e) {
                 handleConverterError("PractitionerRole", e, errors);
@@ -384,7 +339,8 @@ public class Hl7ToFhirService {
 
             // Insurance / RelatedPerson / Organizations (IN1/GT1)
             try {
-                List<DomainResource> insuranceResources = insuranceConverter.convert(terser, bundle, context);
+                List<DomainResource> insuranceResources = converterRegistry.getInsuranceConverter().convert(terser,
+                        bundle, context);
                 for (DomainResource res : insuranceResources) {
                     bundle.addEntry().setResource(res).getRequest().setMethod(Bundle.HTTPVerb.POST)
                             .setUrl(res.getResourceType().name());

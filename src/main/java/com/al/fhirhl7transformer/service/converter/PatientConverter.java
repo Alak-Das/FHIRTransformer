@@ -16,6 +16,12 @@ import java.util.List;
 @Component
 public class PatientConverter implements SegmentConverter<Patient> {
 
+    private final com.al.fhirhl7transformer.config.MappingConfiguration mappingConfiguration;
+
+    public PatientConverter(com.al.fhirhl7transformer.config.MappingConfiguration mappingConfiguration) {
+        this.mappingConfiguration = mappingConfiguration;
+    }
+
     @Override
     public List<Patient> convert(Terser terser, Bundle bundle, ConversionContext context) {
         try {
@@ -70,7 +76,15 @@ public class PatientConverter implements SegmentConverter<Patient> {
                 if (pid3_5 != null) {
                     identifier.getType().addCoding().setSystem("http://terminology.hl7.org/CodeSystem/v2-0203")
                             .setCode(pid3_5);
-                    if ("MR".equals(pid3_5)) {
+
+                    // Use configured identifier map if available
+                    if (mappingConfiguration != null && mappingConfiguration.getPatient() != null &&
+                            mappingConfiguration.getPatient().getIdentifierTypeCodeMap() != null) {
+                        String mappedCode = mappingConfiguration.getPatient().getIdentifierTypeCodeMap().get(pid3_5);
+                        if ("MRN".equals(mappedCode) || "MR".equals(pid3_5)) { // Fallback to "MR" check
+                            identifier.setUse(Identifier.IdentifierUse.OFFICIAL);
+                        }
+                    } else if ("MR".equals(pid3_5)) {
                         identifier.setUse(Identifier.IdentifierUse.OFFICIAL);
                     }
                 }
@@ -114,14 +128,41 @@ public class PatientConverter implements SegmentConverter<Patient> {
 
             // PID-8 Gender
             String gender = terser.get(mainPathToUse + "-8");
-            if ("M".equalsIgnoreCase(gender)) {
-                patient.setGender(Enumerations.AdministrativeGender.MALE);
-            } else if ("F".equalsIgnoreCase(gender)) {
-                patient.setGender(Enumerations.AdministrativeGender.FEMALE);
-            } else if ("O".equalsIgnoreCase(gender)) {
-                patient.setGender(Enumerations.AdministrativeGender.OTHER);
-            } else {
-                patient.setGender(Enumerations.AdministrativeGender.UNKNOWN);
+            if (gender != null) {
+                // Configurable Mapping
+                boolean mapped = false;
+                if (mappingConfiguration != null && mappingConfiguration.getPatient() != null &&
+                        mappingConfiguration.getPatient().getGenderMap() != null) {
+                    // Reverse lookup or direct map?
+                    // Config has: male: "M", female: "F" (FHIR -> HL7)
+                    // We are converting HL7 -> FHIR here.
+                    // So we need to match Value ("M") to Key ("male").
+
+                    for (java.util.Map.Entry<String, String> entry : mappingConfiguration.getPatient().getGenderMap()
+                            .entrySet()) {
+                        if (entry.getValue().equalsIgnoreCase(gender)) {
+                            try {
+                                patient.setGender(Enumerations.AdministrativeGender.fromCode(entry.getKey()));
+                                mapped = true;
+                                break;
+                            } catch (Exception e) {
+                            }
+                        }
+                    }
+                }
+
+                if (!mapped) {
+                    // Fallback to hardcoded standard
+                    if ("M".equalsIgnoreCase(gender)) {
+                        patient.setGender(Enumerations.AdministrativeGender.MALE);
+                    } else if ("F".equalsIgnoreCase(gender)) {
+                        patient.setGender(Enumerations.AdministrativeGender.FEMALE);
+                    } else if ("O".equalsIgnoreCase(gender)) {
+                        patient.setGender(Enumerations.AdministrativeGender.OTHER);
+                    } else {
+                        patient.setGender(Enumerations.AdministrativeGender.UNKNOWN);
+                    }
+                }
             }
 
             // PID-7 DOB
@@ -144,8 +185,26 @@ public class PatientConverter implements SegmentConverter<Patient> {
             // PID-16 Marital Status
             String maritalStatus = terser.get(mainPathToUse + "-16-1");
             if (maritalStatus != null) {
+                String fhirStatus = null;
+                // Configurable Mapping
+                if (mappingConfiguration != null && mappingConfiguration.getPatient() != null &&
+                        mappingConfiguration.getPatient().getMaritalStatusMap() != null) {
+                    // Reverse Lookup HL7 -> FHIR
+                    for (java.util.Map.Entry<String, String> entry : mappingConfiguration.getPatient()
+                            .getMaritalStatusMap().entrySet()) {
+                        if (entry.getValue().equalsIgnoreCase(maritalStatus)) {
+                            fhirStatus = entry.getKey();
+                            break;
+                        }
+                    }
+                }
+
+                if (fhirStatus == null) {
+                    fhirStatus = maritalStatus; // Fallback to raw code
+                }
+
                 patient.getMaritalStatus().addCoding().setSystem(MappingConstants.SYSTEM_V2_MARITAL_STATUS)
-                        .setCode(maritalStatus).setDisplay(terser.get(mainPathToUse + "-16-2"));
+                        .setCode(fhirStatus).setDisplay(terser.get(mainPathToUse + "-16-2"));
             }
 
             // PID-17 Religion

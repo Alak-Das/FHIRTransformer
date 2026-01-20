@@ -42,15 +42,19 @@ public class FhirToHl7Service {
     private final FhirValidationService validationService;
     private final java.util.List<com.al.fhirhl7transformer.service.mapper.FhirToHl7Converter<?>> converters;
 
+    private final com.al.fhirhl7transformer.config.MappingConfiguration mappingConfiguration;
+
     @Autowired
     public FhirToHl7Service(FhirContext fhirContext, HapiContext hapiContext, MeterRegistry meterRegistry,
             FhirValidationService validationService,
-            java.util.List<com.al.fhirhl7transformer.service.mapper.FhirToHl7Converter<?>> converters) {
+            java.util.List<com.al.fhirhl7transformer.service.mapper.FhirToHl7Converter<?>> converters,
+            com.al.fhirhl7transformer.config.MappingConfiguration mappingConfiguration) {
         this.hl7Context = hapiContext;
         this.fhirContext = fhirContext;
         this.meterRegistry = meterRegistry;
         this.validationService = validationService;
         this.converters = converters;
+        this.mappingConfiguration = mappingConfiguration;
         log.info("FhirToHl7Service initialized with {} converters: {}", converters.size(), converters);
     }
 
@@ -266,6 +270,14 @@ public class FhirToHl7Service {
                     String code = header.getEventCoding().getCode();
                     if (code != null) {
                         code = code.toUpperCase();
+                        // Try exact match with supported types
+                        try {
+                            return MessageType.valueOf(code.replace("^", "_"));
+                        } catch (IllegalArgumentException e) {
+                            // Continue if direct mapping fails
+                        }
+
+                        // Heuristic fallback for MessageHeader
                         if (code.contains("ADT"))
                             return MessageType.ADT_A01;
                         if (code.contains("ORM") || code.contains("O01"))
@@ -281,7 +293,38 @@ public class FhirToHl7Service {
             }
         }
 
-        // 2. Fallback: Content-based detection
+        // 2. Configuration-based detection
+        if (mappingConfiguration != null && mappingConfiguration.getMessageTypeDetection() != null
+                && mappingConfiguration.getMessageTypeDetection().getRules() != null) {
+            for (com.al.fhirhl7transformer.config.MappingConfiguration.MessageTypeRule rule : mappingConfiguration
+                    .getMessageTypeDetection().getRules()) {
+                if (rule.getResources() != null && !rule.getResources().isEmpty()) {
+                    // Check if bundle contains ANY of the resources in the rule
+                    // (Simplification: if checking for multiple, we might want ALL, but usually one
+                    // valid trigger is enough)
+                    // The rule usually says "ServiceRequest" -> "ORM^O01"
+
+                    boolean match = false;
+                    for (Bundle.BundleEntryComponent entry : bundle.getEntry()) {
+                        if (entry.hasResource()
+                                && rule.getResources().contains(entry.getResource().getResourceType().name())) {
+                            match = true;
+                            break;
+                        }
+                    }
+
+                    if (match && rule.getMessageType() != null) {
+                        try {
+                            return MessageType.valueOf(rule.getMessageType().replace("^", "_"));
+                        } catch (IllegalArgumentException e) {
+                            log.warn("Invalid message type in configuration: {}", rule.getMessageType());
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Fallback: Hardcoded defaults (Legacy)
         boolean hasPatient = false;
         boolean hasEncounter = false;
         boolean hasDiagnosticReport = false;

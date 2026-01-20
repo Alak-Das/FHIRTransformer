@@ -38,33 +38,12 @@ public class ClinicalMappingsGapTest {
 
         MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
-        PatientConverter patientConverter = new PatientConverter();
-        EncounterConverter encounterConverter = new EncounterConverter();
-        ObservationConverter observationConverter = new ObservationConverter();
-        AllergyConverter allergyConverter = new AllergyConverter();
-
-        ConditionConverter conditionConverter = new ConditionConverter();
-        MedicationConverter medicationConverter = new MedicationConverter();
-        ProcedureConverter procedureConverter = new ProcedureConverter();
-        InsuranceConverter insuranceConverter = new InsuranceConverter();
-        AppointmentConverter appointmentConverter = new AppointmentConverter();
-        ImmunizationConverter immunizationConverter = new ImmunizationConverter();
-        ServiceRequestConverter serviceRequestConverter = new ServiceRequestConverter();
-        DiagnosticReportConverter diagnosticReportConverter = new DiagnosticReportConverter();
-        MedicationAdministrationConverter medicationAdministrationConverter = new MedicationAdministrationConverter();
-        PractitionerConverter practitionerConverter = new PractitionerConverter();
-        LocationConverter locationConverter = new LocationConverter();
-        OrganizationConverter organizationConverter = new OrganizationConverter();
-        SpecimenConverter specimenConverter = new SpecimenConverter();
-        CommunicationConverter communicationConverter = new CommunicationConverter();
-        DeviceConverter deviceConverter = new DeviceConverter();
-        OrderConverter orderConverter = new OrderConverter();
-        DocumentReferenceConverter documentReferenceConverter = new DocumentReferenceConverter();
         ParsingConfiguration parsingConfiguration = new ParsingConfiguration();
         SubscriptionService subscriptionService = Mockito.mock(SubscriptionService.class);
 
-        hl7ToFhirService = new Hl7ToFhirService(fhirValidationService, fhirContext, hapiContext, meterRegistry,
-                new PatientConverter(), new EncounterConverter(), new ObservationConverter(), new AllergyConverter(),
+        Hl7ConverterRegistry registry = new Hl7ConverterRegistry(
+                new PatientConverter(new com.al.fhirhl7transformer.config.MappingConfiguration()),
+                new EncounterConverter(), new ObservationConverter(), new AllergyConverter(),
                 new ConditionConverter(), new MedicationConverter(), new ProcedureConverter(), new InsuranceConverter(),
                 new AppointmentConverter(), new ImmunizationConverter(), new ServiceRequestConverter(),
                 new DiagnosticReportConverter(),
@@ -79,7 +58,10 @@ public class ClinicalMappingsGapTest {
                 new DocumentReferenceConverter(),
                 new CarePlanConverter(),
                 new PractitionerRoleConverter(),
-                new MessageHeaderConverter(),
+                new MessageHeaderConverter());
+
+        hl7ToFhirService = new Hl7ToFhirService(fhirValidationService, fhirContext, hapiContext, meterRegistry,
+                registry,
                 new ParsingConfiguration(),
                 Mockito.mock(SubscriptionService.class));
     }

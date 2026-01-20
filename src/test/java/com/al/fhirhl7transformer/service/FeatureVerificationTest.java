@@ -22,6 +22,7 @@ import java.util.Collections;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -76,12 +77,16 @@ public class FeatureVerificationTest {
     private DocumentReferenceConverter documentReferenceConverter;
     @Mock
     private SubscriptionService subscriptionService;
+
     @Mock
     private CarePlanConverter carePlanConverter;
     @Mock
     private PractitionerRoleConverter practitionerRoleConverter;
     @Mock
     private MessageHeaderConverter messageHeaderConverter;
+
+    @Mock
+    private Hl7ConverterRegistry converterRegistry;
 
     private ParsingConfiguration parsingConfiguration;
     private HapiContext hapiContext;
@@ -96,15 +101,11 @@ public class FeatureVerificationTest {
         parsingConfiguration = new ParsingConfiguration();
         parsingConfiguration.setSupportedVersions(Arrays.asList("2.3", "2.5", "2.5.1", "2.6"));
 
+        setupRegistryMocks();
+
         hl7ToFhirService = new Hl7ToFhirService(
                 fhirValidationService, fhirContext, hapiContext, meterRegistry,
-                patientConverter, encounterConverter, observationConverter, allergyConverter,
-                conditionConverter, medicationConverter, procedureConverter, insuranceConverter,
-                appointmentConverter, immunizationConverter, serviceRequestConverter, diagnosticReportConverter,
-                medicationAdministrationConverter, practitionerConverter, locationConverter, organizationConverter,
-                specimenConverter, communicationConverter, deviceConverter, orderConverter,
-                documentReferenceConverter, carePlanConverter, practitionerRoleConverter, messageHeaderConverter,
-                parsingConfiguration, subscriptionService);
+                converterRegistry, parsingConfiguration, subscriptionService);
     }
 
     @Test
@@ -208,9 +209,38 @@ public class FeatureVerificationTest {
         when(communicationConverter.convert(any(), any(), any())).thenReturn(Collections.emptyList());
         when(deviceConverter.convert(any(), any(), any())).thenReturn(Collections.emptyList());
         when(orderConverter.convert(any(), any(), any())).thenReturn(Collections.emptyList());
+        when(orderConverter.convert(any(), any(), any())).thenReturn(Collections.emptyList());
         when(documentReferenceConverter.convert(any(), any(), any())).thenReturn(Collections.emptyList());
         when(carePlanConverter.convert(any(), any(), any())).thenReturn(Collections.emptyList());
         when(practitionerRoleConverter.convert(any(), any(), any())).thenReturn(Collections.emptyList());
         when(messageHeaderConverter.convert(any(), any(), any())).thenReturn(Collections.emptyList());
+    }
+
+    private void setupRegistryMocks() {
+        when(converterRegistry.getPatientConverter()).thenReturn(patientConverter);
+        when(converterRegistry.getEncounterConverter()).thenReturn(encounterConverter);
+        when(converterRegistry.getObservationConverter()).thenReturn(observationConverter);
+        when(converterRegistry.getAllergyConverter()).thenReturn(allergyConverter);
+        when(converterRegistry.getConditionConverter()).thenReturn(conditionConverter);
+        when(converterRegistry.getMedicationConverter()).thenReturn(medicationConverter);
+        when(converterRegistry.getProcedureConverter()).thenReturn(procedureConverter);
+        when(converterRegistry.getInsuranceConverter()).thenReturn(insuranceConverter);
+        when(converterRegistry.getAppointmentConverter()).thenReturn(appointmentConverter);
+        when(converterRegistry.getImmunizationConverter()).thenReturn(immunizationConverter);
+        when(converterRegistry.getServiceRequestConverter()).thenReturn(serviceRequestConverter);
+        when(converterRegistry.getDiagnosticReportConverter()).thenReturn(diagnosticReportConverter);
+        when(converterRegistry.getMedicationAdministrationConverter()).thenReturn(medicationAdministrationConverter);
+        when(converterRegistry.getPractitionerConverter()).thenReturn(practitionerConverter);
+        when(converterRegistry.getLocationConverter()).thenReturn(locationConverter);
+        when(converterRegistry.getOrganizationConverter()).thenReturn(organizationConverter);
+        when(converterRegistry.getSpecimenConverter()).thenReturn(specimenConverter);
+        when(converterRegistry.getCommunicationConverter()).thenReturn(communicationConverter);
+        when(converterRegistry.getDeviceConverter()).thenReturn(deviceConverter);
+        when(converterRegistry.getOrderConverter()).thenReturn(orderConverter);
+        when(converterRegistry.getOrderConverter()).thenReturn(orderConverter);
+        when(converterRegistry.getDocumentReferenceConverter()).thenReturn(documentReferenceConverter);
+        when(converterRegistry.getCarePlanConverter()).thenReturn(carePlanConverter);
+        when(converterRegistry.getPractitionerRoleConverter()).thenReturn(practitionerRoleConverter);
+        when(converterRegistry.getMessageHeaderConverter()).thenReturn(messageHeaderConverter);
     }
 }
