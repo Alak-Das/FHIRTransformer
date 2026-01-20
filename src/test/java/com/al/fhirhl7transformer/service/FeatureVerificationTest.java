@@ -95,7 +95,13 @@ public class FeatureVerificationTest {
     @BeforeEach
     void setUp() {
         fhirContext = FhirContext.forR4();
-        fhirValidationService = new FhirValidationService(fhirContext);
+        // Create ValidationSupportChain for the updated FhirValidationService
+        // constructor
+        org.hl7.fhir.common.hapi.validation.support.ValidationSupportChain validationSupportChain = new org.hl7.fhir.common.hapi.validation.support.ValidationSupportChain(
+                new ca.uhn.fhir.context.support.DefaultProfileValidationSupport(fhirContext),
+                new org.hl7.fhir.common.hapi.validation.support.InMemoryTerminologyServerValidationSupport(fhirContext),
+                new org.hl7.fhir.common.hapi.validation.support.CommonCodeSystemsTerminologyService(fhirContext));
+        fhirValidationService = new FhirValidationService(fhirContext, validationSupportChain);
         hapiContext = new DefaultHapiContext();
         meterRegistry = new SimpleMeterRegistry();
         parsingConfiguration = new ParsingConfiguration();

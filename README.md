@@ -108,7 +108,7 @@ docker-compose up -d
 
 # Application runs on http://localhost:8090
 # RabbitMQ Management UI: http://localhost:15672 (guest/guest)
-# MongoDB: mongodb://localhost:27017/fhirhl7transformer
+# MongoDB: mongodb://localhost:27017/HL7FHIRTransformer
 # Redis: redis://localhost:6379
 ```
 
@@ -135,7 +135,7 @@ PID|1||12345||Doe^John||19800101|M|||123 Main St^^New York^NY^10001"
 
 ```
 HL7FHIRTransformer/
-├── src/main/java/com/fhirhl7transformer/
+├── src/main/java/com/al/hl7fhirtransformer/
 │   ├── config/              # Configuration classes (Security, RabbitMQ, Cache, etc.)
 │   ├── controller/          # REST controllers (Converter, Tenant)
 │   ├── dto/                 # Data Transfer Objects

@@ -50,4 +50,17 @@ public class PerformanceConfig {
         ctx.setValidationContext(new ca.uhn.hl7v2.validation.impl.NoValidation());
         return ctx;
     }
+
+    /**
+     * Singleton ValidationSupportChain - expensive to create, so we create it once.
+     * This chain provides terminology validation support for FHIR validation.
+     */
+    @Bean
+    public org.hl7.fhir.common.hapi.validation.support.ValidationSupportChain validationSupportChain(
+            FhirContext fhirContext) {
+        return new org.hl7.fhir.common.hapi.validation.support.ValidationSupportChain(
+                new ca.uhn.fhir.context.support.DefaultProfileValidationSupport(fhirContext),
+                new org.hl7.fhir.common.hapi.validation.support.InMemoryTerminologyServerValidationSupport(fhirContext),
+                new org.hl7.fhir.common.hapi.validation.support.CommonCodeSystemsTerminologyService(fhirContext));
+    }
 }

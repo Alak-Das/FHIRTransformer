@@ -9,7 +9,7 @@
 
 ## High-Level Architecture
 
-FHIR Transformer follows a **Layered Microservice Architecture** with **Event-Driven Asynchronous Processing** for scalability and decoupling.
+HL7FHIRTransformer follows a **Layered Microservice Architecture** with **Event-Driven Asynchronous Processing** for scalability and decoupling.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐

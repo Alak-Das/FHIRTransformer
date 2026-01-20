@@ -39,6 +39,8 @@ public class SubscriptionService {
 
     /**
      * Check if any resources in the Bundle match active subscriptions and notify.
+     * Uses parallel processing for improved performance with multiple
+     * subscriptions.
      */
     @org.springframework.scheduling.annotation.Async
     public void checkAndNotify(Bundle bundle, String tenantId) {
@@ -50,16 +52,14 @@ public class SubscriptionService {
                 .map(Bundle.BundleEntryComponent::getResource)
                 .collect(Collectors.toList());
 
-        for (SubscriptionEntity sub : subscriptions) {
+        // Process subscriptions in parallel for better performance
+        subscriptions.parallelStream().forEach(sub -> {
             try {
                 if (matchesCriteria(sub.getCriteria(), resources)) {
                     log.info("Subscription {} matched for tenant {}. Sending notification to {}",
                             sub.getId(), tenantId, sub.getEndpoint());
 
                     // Send notification via webhook
-                    // Payload can be the full bundle or a subset. For now, sending notification
-                    // metadata.
-                    // Ideally, we POST the content.
                     Map<String, Object> details = Map.of(
                             "subscriptionId", sub.getId(),
                             "criteria", sub.getCriteria(),
@@ -71,7 +71,7 @@ public class SubscriptionService {
             } catch (Exception e) {
                 log.error("Error processing subscription {}: {}", sub.getId(), e.getMessage());
             }
-        }
+        });
     }
 
     private boolean matchesCriteria(String criteria, List<Resource> resources) {

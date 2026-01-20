@@ -1,13 +1,9 @@
 package com.al.fhirhl7transformer.service;
 
 import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.context.support.DefaultProfileValidationSupport;
 import ca.uhn.fhir.validation.FhirValidator;
 import ca.uhn.fhir.validation.ValidationResult;
 import com.al.fhirhl7transformer.exception.FhirValidationException;
-import org.hl7.fhir.common.hapi.validation.support.CommonCodeSystemsTerminologyService;
-import org.hl7.fhir.common.hapi.validation.support.InMemoryTerminologyServerValidationSupport;
-import org.hl7.fhir.common.hapi.validation.support.ValidationSupportChain;
 import org.hl7.fhir.common.hapi.validation.validator.FhirInstanceValidator;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.springframework.stereotype.Service;
@@ -20,16 +16,12 @@ public class FhirValidationService {
 
     private final FhirValidator validator;
 
-    public FhirValidationService(FhirContext fhirContext) {
+    public FhirValidationService(FhirContext fhirContext,
+            org.hl7.fhir.common.hapi.validation.support.ValidationSupportChain validationSupportChain) {
         this.validator = fhirContext.newValidator();
 
-        // Setup terminology validation support
-        ValidationSupportChain supportChain = new ValidationSupportChain(
-                new DefaultProfileValidationSupport(fhirContext),
-                new InMemoryTerminologyServerValidationSupport(fhirContext),
-                new CommonCodeSystemsTerminologyService(fhirContext));
-
-        FhirInstanceValidator instanceValidator = new FhirInstanceValidator(supportChain);
+        // Use the injected singleton ValidationSupportChain for better performance
+        FhirInstanceValidator instanceValidator = new FhirInstanceValidator(validationSupportChain);
         this.validator.registerValidatorModule(instanceValidator);
     }
 

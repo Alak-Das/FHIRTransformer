@@ -38,10 +38,10 @@ public class BatchConversionService {
             FhirToHl7Service fhirToHl7Service) {
         this.hl7ToFhirService = hl7ToFhirService;
         this.fhirToHl7Service = fhirToHl7Service;
-        // Create thread pool with size based on available processors
-        int threadPoolSize = Math.max(4, Runtime.getRuntime().availableProcessors());
-        this.executorService = Executors.newFixedThreadPool(threadPoolSize);
-        log.info("BatchConversionService initialized with {} threads", threadPoolSize);
+        // Java 21 Virtual Threads: lightweight, scalable threading for I/O-bound tasks
+        // Each conversion task runs on a virtual thread with minimal overhead
+        this.executorService = Executors.newVirtualThreadPerTaskExecutor();
+        log.info("BatchConversionService initialized with Java 21 virtual threads");
     }
 
     /**
