@@ -3,22 +3,15 @@ services:
     build: .
     ports:
       - "8090:8080"
+
     restart: unless-stopped
     container_name: hl7-fhir-transformer
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      mongo:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     environment:
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/fhirhl7transformer
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      SPRING_RABBITMQ_USERNAME: fhiruser
-      SPRING_RABBITMQ_PASSWORD: fhirpass
+      SPRING_DATA_MONGODB_URI: mongodb://admin:supersecret@host.docker.internal:27017/admin?authSource=admin
+      SPRING_RABBITMQ_HOST: host.docker.internal
+      SPRING_DATA_REDIS_HOST: host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./src/main/resources/application.properties:/app/config/application.properties
     deploy:
@@ -27,51 +20,3 @@ services:
           memory: 2G
         reservations:
           memory: 1G
-
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    # ports removed to avoid bind errors
-
-    container_name: fhir-mq
-    restart: unless-stopped
-    environment:
-      RABBITMQ_DEFAULT_USER: fhiruser
-      RABBITMQ_DEFAULT_PASS: fhirpass
-    healthcheck:
-      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  mongo:
-    image: mongo:7.0
-    # ports removed to avoid bind errors
-
-    container_name: fhir-mongo
-    restart: unless-stopped
-    volumes:
-      - mongo-data:/data/db
-    healthcheck:
-      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: fhir-redis
-    ports:
-      - "6379:6379"
-    restart: unless-stopped
-    command: redis-server --appendonly yes
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-
-volumes:
-  mongo-data:
-  redis-data:

@@ -6,6 +6,8 @@
 - [Tenant Management](#tenant-management)
 - [Error Handling](#error-handling)
 - [Rate Limiting & Quotas](#rate-limiting--quotas)
+- [Interactive Documentation (Swagger UI)](#interactive-documentation-swagger-ui)
+
 
 ## Authentication
 
@@ -604,6 +606,18 @@ newman run postman/hl7-fhir-transformer.postman_collection.json \
 ```
 
 ---
+
+## Interactive Documentation (Swagger UI)
+
+For an interactive experience where you can test the APIs in real-time, visit the built-in Swagger UI:
+
+- **Local URL**: `http://localhost:8080/swagger-ui.html`
+- **Docker URL**: `http://localhost:8090/swagger-ui.html`
+
+The Swagger UI provides:
+- Live API testing with Basic Auth support.
+- Detailed request/response schemas.
+- Real-time specification in OpenAPI 3.0 format.
 
 ## Next Steps
 

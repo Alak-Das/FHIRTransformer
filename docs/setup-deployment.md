@@ -66,6 +66,9 @@ docker-compose ps
 
 # Test health endpoint
 curl http://localhost:8090/actuator/health -u admin:password
+
+# Verify Swagger UI
+# visit http://localhost:8090/swagger-ui.html in your browser
 ```
 
 #### Step 4: Test Conversion
@@ -79,6 +82,7 @@ PID|1||12345||Doe^John||19800101|M"
 
 #### Step 5: Access Management UIs
 - **RabbitMQ Management**: http://localhost:15672 (guest/guest)
+- **Swagger UI**: http://localhost:8090/swagger-ui.html
 - **Application**: http://localhost:8090
 
 #### Stop Services

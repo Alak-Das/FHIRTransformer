@@ -61,6 +61,12 @@ HL7FHIRTransformer follows a **Layered Microservice Architecture** with **Event-
 │  │  - TxnLogs  │  │  - Sessions ││   Audit Updates)
 │  └─────────────┘  └─────────────┘│
 └───────────────────────────────────┘
+
+### 7. **Performance Optimization Layer**
+- **Virtual Threads**: Java 21 `VirtualThreadPerTaskExecutor` for non-blocking I/O.
+- **Singleton Validation**: Reusable `ValidationSupportChain` to minimize heap churn.
+- **Parallel Streams**: Concurrent processing for batch and subscription notifications.
+
 ```
 
 ### Architecture Layers
@@ -509,14 +515,19 @@ public Optional<Tenant> findByTenantId(String tenantId) {
 - **MongoDB Replica Set**: Read scaling and failover
 
 ### Performance Optimizations
-- **Connection Pooling**: 
-  - RabbitMQ: 25 cached channels
-  - MongoDB: Default connection pool
-  - Redis: Lettuce pool (max 8 active)
-- **Async Processing**: Non-blocking audit logs, message listeners
-- **Batch Processing**: Parallel stream processing with `parallelStream()`
-- **Caching Strategy**: Cache-aside with configurable TTL (1 hour default)
-- **HTTP/2 & Compression**: Enabled for reduced payload size
+
+#### 1. **Java 21 Virtual Threads**
+The application leverages Project Loom's virtual threads for high-concurrency tasks:
+- **Batch Processing**: `BatchConversionService` uses `Executors.newVirtualThreadPerTaskExecutor()` instead of a fixed thread pool, allowing it to scale to thousands of concurrent conversions with minimal overhead.
+- **Reactive Throughput**: Virtual threads reduce the memory footprint per task, enabling higher throughput on the same hardware.
+
+#### 2. **Singleton Validation Support**
+Expensive validation components are shared across the application:
+- **ValidationSupportChain**: Pre-initialized and injected as a singleton. This avoids the high cost of re-scanning profiles and terminologies for every message.
+- **FhirContext**: Reused globally to minimize the cost of JSON/XML parsing and validation engine warm-up.
+
+#### 3. **Parallel Notification Engine**
+- `SubscriptionService` uses `parallelStream()` for webhook notifications, ensuring that one slow endpoint doesn't block notifications for other subscribers.
 
 ### Concurrency Configuration
 ```properties

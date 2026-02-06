@@ -25,7 +25,9 @@ HL7FHIRTransformer is an enterprise-grade, high-performance bidirectional messag
 ### Core Capabilities
 - **Bidirectional Conversion**: HL7 v2.x ↔ FHIR R4 with full resource mapping
 - **Async & Sync Processing**: Both synchronous REST APIs and asynchronous RabbitMQ-based processing
-- **Batch Operations**: Parallel batch conversion with configurable concurrency
+- **Performance Optimized**: Leverages **Java 21 Virtual Threads** and optimized singleton validation for high throughput
+- **Auto-generated API Docs**: Built-in **Swagger UI** for real-time API exploration and testing
+- **Batch Operations**: Parallel batch conversion with configurable concurrency using Virtual Threads
 - **Multi-Tenancy**: Complete tenant isolation with per-tenant user management
 - **Custom Z-Segment Support**: Extensible mapping for non-standard HL7 segments via FHIR extensions
 
@@ -46,6 +48,8 @@ HL7FHIRTransformer is an enterprise-grade, high-performance bidirectional messag
 - **Cache**: Redis 7.x (distributed caching)
 - **HL7/FHIR Libraries**: HAPI FHIR 7.6.1, HAPI HL7 v2 2.5.1
 - **Deployment**: Docker Compose, Multi-stage Dockerfile
+- **Documentation**: Swagger UI / OpenAPI 3.0
+
 
 ## Supported HL7 Versions
 - HL7 v2.3
@@ -107,6 +111,7 @@ cd HL7FHIRTransformer
 docker-compose up -d
 
 # Application runs on http://localhost:8090
+# Swagger UI: http://localhost:8090/swagger-ui.html
 # RabbitMQ Management UI: http://localhost:15672 (guest/guest)
 # MongoDB: mongodb://localhost:27017/HL7FHIRTransformer
 # Redis: redis://localhost:6379

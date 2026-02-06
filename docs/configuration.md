@@ -6,6 +6,7 @@
 - [Database Configuration](#database-configuration)
 - [Security Configuration](#security-configuration)
 - [Performance Configuration](#performance-configuration)
+- [OpenAPI & Swagger UI Configuration](#openapi--swagger-ui-configuration)
 - [Logging Configuration](#logging-configuration)
 
 ## Application Properties
@@ -271,6 +272,39 @@ public RedisCacheManagerBuilderCustomizer redisCacheManagerBuilderCustomizer() {
                 .entryTtl(Duration.ofMinutes(5)));
 }
 ```
+
+#### **Virtual Threads (Java 21)**
+Enabled by default for high-concurrency services:
+- **Batch Processing**: Automatically uses virtual threads to scale conversion tasks.
+- **Webhook Notifications**: Uses parallel streams for non-blocking subscriber notification.
+
+#### **Validation Tuning**
+- **Singleton Validation Chain**: Configured as a Spring Bean to avoid repeated initialization costs.
+- **Cached Schemas**: Validation support chain caches FHIR profiles in-memory.
+
+---
+
+## OpenAPI & Swagger UI Configuration
+
+SpringDoc OpenAPI provides auto-generated documentation.
+
+### Properties
+```properties
+# Enable/Disable Swagger UI
+springdoc.swagger-ui.enabled=true
+
+# Path to Swagger UI
+springdoc.swagger-ui.path=/swagger-ui.html
+
+# Selection of API groups
+springdoc.api-docs.path=/v3/api-docs
+
+# Enable operations sorting
+springdoc.swagger-ui.operationsSorter=method
+```
+
+### Security Requirement
+Authenticated via Basic Auth. Credentials for Swagger UI match the application admin credentials defined in `app.admin.username` and `app.admin.password`.
 
 ---
 
